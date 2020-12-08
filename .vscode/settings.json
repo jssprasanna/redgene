@@ -1,0 +1,11 @@
+{
+    "files.associations": {
+        "*.tcc": "cpp",
+        "algorithm": "cpp",
+        "random": "cpp",
+        "memory": "cpp",
+        "optional": "cpp",
+        "functional": "cpp",
+        "numeric": "cpp"
+    }
+}

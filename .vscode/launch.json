@@ -1,0 +1,29 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "rand_engine",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "/home/kp1808/vscode_share/rand_engine/rand_engine",
+            "args": [],
+            "stopAtEntry": false,
+            "cwd": "/home/kp1808/vscode_share/rand_engine",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ],
+            "preLaunchTask": "rand_engine",
+            "miDebuggerPath": "/usr/bin/gdb"
+        }
+    ]
+}

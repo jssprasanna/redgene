@@ -1,0 +1,28 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"type": "cppbuild",
+			"label": "rand_engine",
+			"command": "/usr/bin/g++",
+			"args": [
+				"-Woverflow",
+				"-g",
+				"main.cpp",
+				"-o",
+				"rand_engine"
+			],
+			"options": {
+				"cwd": "/home/kp1808/vscode_share/rand_engine"
+			},
+			"problemMatcher": [
+				"$gcc"
+			],
+			"group": {
+				"kind": "build",
+				"isDefault": true
+			},
+			"detail": "compiler: /usr/bin/g++"
+		}
+	]
+}
