@@ -93,4 +93,7 @@ namespace redgene
         }
     };
 
+    //TODO
+    //ADD zipfian distribution
+    //ADD set distribution
 }
