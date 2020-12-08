@@ -1,4 +1,4 @@
-#include "rand_engine.hpp"
+#include "rglibinc.hpp"
 
 namespace redgene
 {
