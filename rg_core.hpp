@@ -11,6 +11,7 @@ namespace redgene
         bool bypass_warehouse = true;
         static const char alphabet[];
     public:
+        
         rand_str_generator() = default;
         rand_str_generator(uint_fast16_t length, bool bypass_warehouse) :
             str_length(length), bypass_warehouse(bypass_warehouse)
@@ -25,11 +26,11 @@ namespace redgene
                 (rand_str_warehouse->find(key) == rand_str_warehouse->end()))
             {
                 rand_str.reserve(str_length);
-                mt19937_64 dreng(key);
+                mt19937_64 str_prng(key);
                 uniform_int_distribution<uint_fast8_t> uidist(0, 
                     sizeof(alphabet)/sizeof(*alphabet)-2);
                 generate_n(back_inserter(rand_str), str_length, 
-                    [&]() { return alphabet[uidist(dreng)]; });
+                    [&]() { return alphabet[uidist(str_prng)]; });
                 if(!bypass_warehouse)
                     rand_str_warehouse->insert(pair<UIntType, string>(key, rand_str));
             }
@@ -44,7 +45,6 @@ namespace redgene
             if(rand_str_warehouse)
             {
                 delete rand_str_warehouse;
-                //rand_str_warehouse = nullptr;
             }
         }
     };
@@ -53,5 +53,5 @@ namespace redgene
     const char rand_str_generator<>::alphabet[] =
         "abcdefghijklmnopqrstuvwxyz"
         "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-        "0123456789";
+        "0123456789,.-#'?!";
 }
