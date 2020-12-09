@@ -1,0 +1,415 @@
+{
+	"prng":"MT19937",
+	"seed":1729,
+	"tables":
+	[
+		{
+			"table_name": "region",
+			"row_count": 5,
+			"columns": 
+			[
+				{
+					"column_name": "regionkey",
+					"constraint": "PK"
+				},
+				{
+					"column_name": "name",
+					"cardinality": 1.0,
+					"type": "STRING",
+					"length": 15
+				},
+				{
+					"column_name": "comment",
+					"cardinality": 1.0,
+					"type": "STRING",
+					"length": 100
+				}
+			]
+		},
+		{
+			"table_name": "nation",
+			"row_count": 25,
+			"columns":
+			[
+				{
+					"column_name": "nationkey",
+					"constraint": "PK"
+				},
+				{
+					"column_name": "name",
+					"cardinality": 1.0,
+					"type": "STRING",
+					"length": 15 
+				},
+				{
+					"column_name": "regionkey",
+					"constraint": "FK",
+					"ref_tab": "region",
+					"ref_col": "regionkey"
+				},
+				{
+					"column_name": "comment",
+					"cardinality": 1.0,
+					"type": "STRING",
+					"length": 100
+				}
+			]
+		},
+		{
+			"table_name": "supplier",
+			"row_count": 10000,
+			"columns":
+			[
+				{
+					"column_name": "suppkey",
+					"constraint": "PK"
+				},
+				{
+					"column_name": "name",
+					"cardinality": 1.0,
+					"type": "STRING",
+					"length": 10
+				},
+				{
+					"column_name": "address",
+					"cardinality": 1.0,
+					"type": "STRING",
+					"length": 50
+				},
+				{
+					"column_name": "nationkey",
+					"constraint": "FK",
+					"ref_tab": "nation",
+					"ref_col": "nationkey"
+				},
+				{
+					"column_name": "phone",
+					"cardinality": 1.0,
+					"type": "STRING",
+					"length": 10
+				},
+				{
+					"column_name": "acctbal",
+					"type": "REAL",
+					"real_min": 100.0,
+					"real_max": 5000.0
+				},
+				{
+					"column_name": "comment",
+					"cardinality": 1.0,
+					"type": "STRING",
+					"length": 100
+				}
+			]
+		},
+		{
+			"table_name": "part",
+			"row_count": 200000,
+			"columns":
+			[
+				{
+					"column_name":"partkey",
+					"constraint":"PK"
+				},
+				{
+					"column_name":"name",
+					"cardinality": 1.0,
+					"type": "STRING",
+					"length": 12
+				},
+				{
+					"column_name":"mfgr",
+					"cardinality": 0.6,
+					"type": "STRING",
+					"length": 25
+				},
+				{
+					"column_name": "brand",
+					"cardinality": 0.4,
+					"type": "STRING",
+					"length": 15
+				},
+				{
+					"column_name": "type",
+					"cardinality": 0.2,
+					"type": "STRING",
+					"length": 5
+				},
+				{
+					"column_name": "size",
+					"type": "REAL",
+					"real_min": 4.5,
+					"real_max": 50.6
+				},
+				{
+					"column_name": "container",
+					"cardinality": 1.0,
+					"type": "STRING",
+					"length": 15
+				},
+				{
+					"column_name": "retailprice",
+					"type": "REAL",
+					"real_min": 1.0,
+					"real_max": 1500.0
+				},
+				{
+					"column_name": "comment",
+					"cardinality": 1.0,
+					"type": "STRING",
+					"length": 20
+				}
+			]
+		},
+		{
+			"table_name": "customer",
+			"row_count": 150000,
+			"columns":
+			[
+				{
+					"column_name":"custkey",
+					"constraint":"PK"
+				},
+				{
+					"column_name":"name",
+					"cardinality": 1.0,
+					"type": "STRING",
+					"length": 12
+				},
+				{
+					"column_name": "address",
+					"cardinality": 1.0,
+					"type": "STRING",
+					"length": 50
+				},
+				{
+					"column_name": "nationkey",
+					"constraint": "FK",
+					"ref_tab": "nation",
+					"ref_col": "nationkey"
+				},
+				{
+					"column_name": "phone",
+					"cardinality": 0.75,
+					"type": "STRING",
+					"length": 10
+				},
+				{
+					"column_name": "acctbal",
+					"type": "REAL",
+					"real_min": 50,
+					"real_max": 5000000
+				},
+				{
+					"column_name": "mktsegment",
+					"cardinality": 0.2,
+					"skewness": "MEDIUM",
+					"type": "STRING",
+					"length": 15
+				},
+				{
+					"column_name": "comment",
+					"cardinality": 1.0,
+					"type": "STRING",
+					"length": 100
+				}
+			]
+		},
+		{
+			"table_name": "partsupp",
+			"row_count": 800000,
+			"columns":
+			[
+				{
+					"column_name": "partkey",
+					"constraint": "COMP_PK",
+					"ref_tab": "part",
+					"ref_col": "partkey"
+				},
+				{
+					"column_name":"suppkey",
+					"constraint": "COMP_PK",
+					"ref_tab": "supplier",
+					"ref_col": "suppkey"
+				},
+				{
+					"column_name": "availqty",
+					"type": "REAL",
+					"real_min": 1.0,
+					"real_max": 500
+				},
+				{
+					"column_name": "supplycost",
+					"type": "REAL",
+					"real_min": 5,
+					"real_max": 400
+				},
+				{
+					"column_name": "comment",
+					"cardinality": 1.0,
+					"type": "STRING",
+					"length": 100
+				}
+			]
+		},
+		{
+			"table_name": "orders",
+			"row_count": 1500000,
+			"columns":
+			[
+				{
+					"column_name": "orderkey",
+					"constraint": "PK"
+				},
+				{
+					"column_name":"custkey",
+					"constraint": "FK",
+					"ref_tab": "customer",
+					"ref_col": "custkey"
+				},
+				{
+					"column_name": "status",
+					"cardinality": 5,
+					"type": "STRING",
+					"length": 1
+				},
+				{
+					"column_name": "totalprice",
+					"type": "REAL",
+					"real_min": 2.0,
+					"real_max": 1499
+				},
+				{
+					"column_name": "orderdate",
+					"cardinality": 0.6,
+					"type": "STRING",
+					"length": 10
+				},
+				{
+					"column_name": "orderpriority",
+					"cardinality": 7,
+					"type": "STRING",
+					"length": 15
+				},
+				{
+					"column_name": "clerk",
+					"cardinality": 0.5,
+					"type": "STRING",
+					"length": 15
+				},
+				{
+					"column_name": "shippriority",
+					"cardinality": 5,
+					"skewness": "LOW"
+				},
+				{
+					"column_name": "comment",
+					"cardinality": 1.0,
+					"type": "STRING",
+					"length": 50
+				}
+			]
+		},
+		{
+			"table_name": "lineitem",
+			"row_count": 6000000,
+			"columns":
+			[
+				{
+					"column_name": "orderkey",
+					"constraint": "FK",
+					"ref_tab": "orders",
+					"ref_col": "orderkey"
+				},
+				{
+					"column_name":"partkey",
+					"constraint": "COMP_FK",
+					"ref_tab": "partsupp",
+					"ref_col": "partkey"
+				},
+				{
+					"column_name":"suppkey",
+					"constraint": "COMP_FK",
+					"ref_tab": "partsupp",
+					"ref_col": "suppkey"
+				},
+				{
+					"column_name": "linenumber",
+					"cardinality": 0.7
+				},
+				{
+					"column_name": "quantity",
+					"type": "REAL",
+					"real_min": 10,
+					"real_max": 45
+				},
+				{
+					"column_name": "extendedprice",
+					"type": "REAL",
+					"real_min": 115,
+					"real_max": 15000
+				},
+				{
+					"column_name": "discount",
+					"type": "REAL",
+					"real_min": 0,
+					"real_max": 1
+				},
+				{
+					"column_name": "tax",
+					"type": "REAL",
+					"real_min": 0,
+					"real_max": 100
+				},
+				{
+					"column_name": "return_flag",
+					"type": "STRING",
+					"length": 1,
+					"cardinality": 3
+				},
+				{
+					"column_name": "linestatus",
+					"type": "STRING",
+					"length": 1,
+					"cardinality": 5
+				},
+				{
+					"column_name": "shipdate",
+					"cardinality": 0.6,
+					"type": "STRING",
+					"length": 10
+				},
+				{
+					"column_name": "commitdate",
+					"cardinality": 0.6,
+					"type": "STRING",
+					"length": 10
+				},
+				{
+					"column_name": "receiptdate",
+					"cardinality": 0.6,
+					"type": "STRING",
+					"length": 10
+				},
+				{
+					"column_name": "shipinstruct",
+					"cardinality": 1,
+					"type": "STRING",
+					"length": 20
+				},
+				{
+					"column_name": "shipmode",
+					"cardinality": 25,
+					"type": "STRING",
+					"length": 10
+				},
+				{
+					"column_name": "comment",
+					"cardinality": 1.0,
+					"type": "STRING",
+					"length": 25
+				}
+			]
+		}
+	]
+}

@@ -93,21 +93,21 @@ namespace redgene
         }
     };
 
-    //ADD zipfian distribution
-    template<typename prngtype = uint_fast64_t, class disttype = uint_fast64_t>
+    //zipfian distribution
+    template<typename prngtype = uint_fast64_t, typename disttype = uint_fast64_t>
     class zipf_distribution : public prob_dist_base<disttype>
     {
     private:
         prng_engine<prngtype>& prng;
-        disttype    n;     ///< Number of elements
-        double   _s;    ///< Exponent
-        double   _q;    ///< Deformation
-        double   oms;   ///< 1-s
-        bool       spole; ///< true if s near 1.0
-        double   rvs;   ///< 1/(1-s)
-        double   H_x1;  ///< H(x_1)
-        double   H_n;   ///< H(n)
-        double   cut;   ///< rejection cut
+        disttype n;     ///< Number of elements
+        double _s;    ///< Exponent
+        double _q;    ///< Deformation
+        double oms;   ///< 1-s
+        bool spole; ///< true if s near 1.0
+        double rvs;   ///< 1/(1-s)
+        double H_x1;  ///< H(x_1)
+        double H_n;   ///< H(n)
+        double cut;   ///< rejection cut
         std::uniform_real_distribution<double> dist;  ///< [H(x_1), H(n)]
 
         // This provides 16 decimal places of precision,
@@ -214,9 +214,10 @@ namespace redgene
                 const double u = dist(prng);
                 const double x = H_inv(u);
                 const disttype  k = std::round(x);
-                if (k - x <= cut) return k;
+                if (k - x <= cut) 
+                    return k;
                 if (u >= H(k + 0.5) - h(k))
-                return k;
+                    return k;
             }
         }
 
@@ -230,6 +231,74 @@ namespace redgene
         result_type max() const { return n; }
     };
 
-    //TODO
-    //ADD set distribution
+    //set distribution
+    template<typename prngtype = uint_fast64_t, typename disttype = uint_fast64_t>
+    class set_distribution : public prob_dist_base<disttype>
+    {
+    private:
+        prng_engine<prngtype>& prng;
+        disttype req_amt;
+        disttype minval;
+        disttype maxval;
+        disttype floor;
+        disttype n;
+        disttype last_k;
+        disttype num_left;
+    public:
+        set_distribution(prng_engine<prngtype>& prng, const disttype amount,
+            const disttype min=numeric_limits<disttype>::min(), 
+            const disttype max=numeric_limits<disttype>::max()) : 
+            prng(prng), req_amt(amount), minval(min), maxval(max), 
+            floor(min), n(max), last_k(min), num_left(amount)
+        {
+            
+        }
+
+        void reset()
+        {
+
+        }
+
+        disttype min() const
+        {
+            return this->minval;
+        }
+
+        disttype max() const
+        {
+            return this->maxval;
+        }
+
+        disttype operator()()
+        {
+            disttype r = 0;
+            try
+            {
+                if(req_amt > maxval)
+                    throw "Requested random numbers is greater than max value";
+                if(num_left > 0)
+                {
+                    disttype range_size = (n - last_k) / num_left;
+                    uniform_int_dist_engine<prngtype, disttype> rnd(prng, floor, range_size);
+                    r = rnd() + last_k + 1;
+                    last_k = r;
+                    --num_left;
+                    return r;
+                }
+                else
+                {
+                    throw "Exceeded amount of random numbers to generate";
+                }
+            }
+            catch(const char* e)
+            {
+                cerr << e << endl;
+            }
+            catch(const std::exception& e)
+            {
+                std::cerr << e.what() << '\n';
+            }
+            return r;
+        }
+    };
 }
