@@ -2,7 +2,7 @@
 
 int main(int argc, char** argv)
 {
-    ofstream flatfile("ff1.txt", std::ofstream::trunc);
+    //ofstream flatfile("ff1.txt", std::ofstream::trunc);
     prng_engine<uint_fast64_t> peng(MT19937_64, 101);
     //prob_dist_base<uint_fast64_t>* uid = new uniform_int_dist_engine<uint_fast64_t, uint_fast64_t>(peng, 0, 10);
     /*prob_dist_base<float>* urd = new uniform_real_dist_engine<uint_fast64_t, float>(peng, 3, 8);
@@ -36,15 +36,15 @@ int main(int argc, char** argv)
     for(int i  = 0; i < 300; i++)
 		cout << i+1 << " : " << hist[i] << endl;*/
     //set_distribution<>* set_dist = new set_distribution<>(peng, 100);
-    set_distribution<> set_dist(peng, 99, 1 , 50000);
-    for(uint64_t i = 0; i < 90; i++)
+    set_distribution<> set_dist(peng, 100, 1 , 50000);
+    for(uint64_t i = 0; i < 100; i++)
         cout << set_dist() << endl;
 
     redgene_validator rgene("tpch.json");
     if(rgene.is_valid())
-        cout << "JSON IS REDGENE VALID :-)" << endl;
+        cout << "JSON IS ReDGene VALID :-)" << endl;
     else
-        cout << "JSON IS NOT REDGENE VALID!" << endl;
+        cout << "JSON IS NOT ReDGene VALID!" << endl;
     
     return 0;
 }

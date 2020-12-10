@@ -2,6 +2,7 @@
 
 namespace redgene
 {
+    //Abstract Base Class for probablity distribution engines.
     template <typename disttype>
     class prob_dist_base
     {
@@ -13,6 +14,7 @@ namespace redgene
         virtual ~prob_dist_base() = default;
     };
 
+    //uniform int number distribution
     template <typename prngtype = uint_fast64_t, typename disttype = int>
     class uniform_int_dist_engine : public prob_dist_base<disttype>
     {
@@ -53,6 +55,7 @@ namespace redgene
         }
     };
 
+    //uniform real number distribution
     template <typename prngtype = uint_fast64_t, typename disttype = double>
     class uniform_real_dist_engine : public prob_dist_base<disttype>
     {
