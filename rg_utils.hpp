@@ -8,13 +8,16 @@ namespace redgene
     private:
         map<UIntType, string>* rand_str_warehouse = nullptr;
         uint_fast16_t str_length = 10;
+        bool is_variable_length = false;
         bool bypass_warehouse = true;
         static const char alphabet[];
     public:
         
         rand_str_generator() = default;
-        rand_str_generator(uint_fast16_t length, bool bypass_warehouse) :
-            str_length(length), bypass_warehouse(bypass_warehouse)
+        rand_str_generator(uint_fast16_t length, bool is_var_length = false, 
+            bool bypass_warehouse = true) :
+            str_length(length), is_variable_length(is_var_length), 
+            bypass_warehouse(bypass_warehouse)
         {
             if(!bypass_warehouse)
                 rand_str_warehouse = new map<UIntType, string>();
@@ -22,14 +25,21 @@ namespace redgene
         string operator()(UIntType key)
         {
             string rand_str;
+            uint_fast16_t cond_str_length = str_length;
             if(bypass_warehouse || 
                 (rand_str_warehouse->find(key) == rand_str_warehouse->end()))
             {
-                rand_str.reserve(str_length);
                 mt19937_64 str_prng(key);
+                if(is_variable_length)
+                {
+                    uniform_int_distribution<uint_fast16_t> rand_var_len(1, str_length);
+                    cond_str_length = rand_var_len(str_prng);
+                }
+                rand_str.reserve(cond_str_length);
+                
                 uniform_int_distribution<uint_fast8_t> uidist(0, 
                     sizeof(alphabet)/sizeof(*alphabet)-2);
-                generate_n(back_inserter(rand_str), str_length, 
+                generate_n(back_inserter(rand_str), cond_str_length, 
                     [&]() { return alphabet[uidist(str_prng)]; });
                 if(!bypass_warehouse)
                     rand_str_warehouse->insert(pair<UIntType, string>(key, rand_str));

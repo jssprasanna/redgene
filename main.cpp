@@ -2,49 +2,33 @@
 
 int main(int argc, char** argv)
 {
-    //ofstream flatfile("ff1.txt", std::ofstream::trunc);
-    prng_engine<uint_fast64_t> peng(MT19937_64, 101);
-    //prob_dist_base<uint_fast64_t>* uid = new uniform_int_dist_engine<uint_fast64_t, uint_fast64_t>(peng, 0, 10);
-    /*prob_dist_base<float>* urd = new uniform_real_dist_engine<uint_fast64_t, float>(peng, 3, 8);
-    for(uint_fast32_t i = 0; i < 100000; ++i)
-        flatfile << (*uid)() << '|' << (*urd)() << '\n';
+    redgene_validator rgene("test.json");
+    if(rgene.is_valid())
+        cout << "JSON IS ReDGene VALID :-)" << endl;
+    else
+        cout << "JSON IS NOT ReDGene VALID!" << endl;
+
+    ofstream flatfile("ff1.txt", std::ofstream::trunc);
+    prng_engine<uint_fast64_t> peng(MT19937_64, 1729);
+    table_type tab("tab1", 100);
+    column_type<uint_fast64_t>* col1_gen = new normal_int_column<>(peng, tab, "col1", 5);
+    column_type<double>* col2_gen = new normal_real_column<>(peng, tab, "col2", 2, 3);
+    column_type<string>* col3_gen = new normal_string_column<>(peng, tab, "col3", 0.3, 15, true);
+
+    for(uint_fast64_t i = 0; i < tab.get_row_count(); i++)
+    {
+        flatfile << (*col1_gen)() << '|' << (*col2_gen)() 
+            << '|' << (*col3_gen)() << endl;
+    }
+
+    delete col3_gen;
+    delete col2_gen;
+    delete col1_gen;
+    
     if(flatfile.is_open())
     {
         flatfile.flush();
         flatfile.close();
     }
-    delete urd;
-    delete uid;
-
-    for(uint_fast16_t i = 0 ; i < 200; ++i)
-    {
-        uint_fast64_t key = (*uid)();
-        rand_str_generator<> str_gen(15, false);
-        cout << key << ":" << str_gen(key) << endl;
-    }
-
-    delete uid;*/
-
-    /*prob_dist_base<uint_fast64_t>* zipf = new zipf_distribution<>(peng, 300, 1.5);
-    array<uint_fast64_t, 1000> hist;
-    hist.fill(0);
-    for (int i = 0; i < 10000; i++)
-    {
-        ++hist[(*zipf)() - 1];
-    }
-
-    for(int i  = 0; i < 300; i++)
-		cout << i+1 << " : " << hist[i] << endl;*/
-    //set_distribution<>* set_dist = new set_distribution<>(peng, 100);
-    set_distribution<> set_dist(peng, 100, 1 , 50000);
-    for(uint64_t i = 0; i < 100; i++)
-        cout << set_dist() << endl;
-
-    redgene_validator rgene("tpch.json");
-    if(rgene.is_valid())
-        cout << "JSON IS ReDGene VALID :-)" << endl;
-    else
-        cout << "JSON IS NOT ReDGene VALID!" << endl;
-    
     return 0;
 }

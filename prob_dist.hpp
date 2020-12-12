@@ -14,8 +14,45 @@ namespace redgene
         virtual ~prob_dist_base() = default;
     };
 
+    //simple increment distribution
+    template <typename disttype = uint_fast64_t>
+    class simple_incrementer : public prob_dist_base<disttype>
+    {
+    private:
+        disttype value = 1;
+        disttype step = 1;
+        disttype minval = 1;
+    public:
+        simple_incrementer(disttype start_value = 1, disttype step = 1) : 
+            value(start_value), step(step), minval(start_value)
+        {
+
+        }
+
+        void reset()
+        {
+            minval = value = step = 1;
+        }
+
+        inline disttype operator()()
+        {
+            return value++;
+        }
+
+        disttype min() const
+        {
+            return minval;
+        }
+
+        disttype max() const
+        {
+            return numeric_limits<disttype>::max();
+        }
+
+    };
+
     //uniform int number distribution
-    template <typename prngtype = uint_fast64_t, typename disttype = int>
+    template <typename prngtype = uint_fast64_t, typename disttype = uint_fast64_t>
     class uniform_int_dist_engine : public prob_dist_base<disttype>
     {
     private:
@@ -39,7 +76,7 @@ namespace redgene
             uni_int_dist->reset();
         }
 
-        disttype operator()()
+        inline disttype operator()()
         {
             return (*uni_int_dist)(prng);
         }
@@ -80,7 +117,7 @@ namespace redgene
             uni_real_dist->reset();
         }
 
-        disttype operator()()
+        inline disttype operator()()
         {
             return (*uni_real_dist)(prng);
         }
@@ -210,7 +247,7 @@ namespace redgene
 
         }
 
-        disttype operator()()
+        inline disttype operator()()
         {
             while (true)
             {
@@ -272,7 +309,7 @@ namespace redgene
             return this->maxval;
         }
 
-        disttype operator()()
+        inline disttype operator()()
         {
             disttype r = 0;
             try
