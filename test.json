@@ -42,7 +42,8 @@
 					"column_name": "col7",
 					"cardinality": 0.3,
 					"type": "STRING",
-					"length": 25
+                    "length": 25,
+                    "skewness": "HIGH"
 				}
 			]
         }

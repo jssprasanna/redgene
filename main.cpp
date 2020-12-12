@@ -10,10 +10,11 @@ int main(int argc, char** argv)
 
     ofstream flatfile("ff1.txt", std::ofstream::trunc);
     prng_engine<uint_fast64_t> peng(MT19937_64, 1729);
-    table_type tab("tab1", 100);
+    table_type tab("tab1", 1000000);
     column_type<uint_fast64_t>* col1_gen = new normal_int_column<>(peng, tab, "col1", 5);
     column_type<double>* col2_gen = new normal_real_column<>(peng, tab, "col2", 2, 3);
-    column_type<string>* col3_gen = new normal_string_column<>(peng, tab, "col3", 0.3, 15, true);
+    column_type<string>* col3_gen = new normal_string_column<>(peng, tab, "col3", 0.3, 
+        skewness::HIGH, 20, false);
 
     for(uint_fast64_t i = 0; i < tab.get_row_count(); i++)
     {

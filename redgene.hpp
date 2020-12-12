@@ -5,12 +5,37 @@
 #include "json.hpp"
 #include <type_traits>
 
-
 using namespace redgene;
 using json = nlohmann::json;
 
 namespace redgene
 {
+    //reference zipf alpha value: NO = NA, LOW = 0.5, MEDIUM = 0.9, HIGH = 1.1, EXTREME = 1.5
+    using skewness = enum { NO = 1, LOW, MEDIUM, HIGH, EXTREME };
+
+    const float get_alpha_value(const skewness skew)
+    {
+        float alpha;
+        switch(skew)
+        {
+            case skewness::LOW:
+                alpha = 0.5;
+                break;
+            case skewness::MEDIUM:
+                alpha = 0.9;
+                break;
+            case skewness::HIGH:
+                alpha = 1.2;
+                break;
+            case skewness::EXTREME:
+                alpha = 1.5;
+                break;
+            default:
+                alpha = 0;
+        }
+        return alpha;
+    }
+
     //REDGENE VALIDATOR CLASS
     class redgene_validator
     {
@@ -241,6 +266,8 @@ namespace redgene
         prng_engine<prng_type>& prng;
         const table_type& table;
         float cardinality;
+        const skewness skew;
+
         prob_dist_base<col_data_type>* pdfuncbase = nullptr;
 
         void set_pdf_context()
@@ -248,17 +275,30 @@ namespace redgene
             if(cardinality == 1)
                 pdfuncbase = new simple_incrementer<col_data_type>();
             else if(cardinality < 1)
-                pdfuncbase = new uniform_int_dist_engine<prng_type, col_data_type>(prng, 1,
-                    (table.get_row_count()*cardinality));
+            {   
+                if(skew == skewness::NO)
+                    pdfuncbase = new uniform_int_dist_engine<prng_type, col_data_type>(prng, 1,
+                        (table.get_row_count()*cardinality));
+                else
+                    pdfuncbase = new zipf_distribution<prng_type, col_data_type>(prng,
+                        table.get_row_count(), get_alpha_value(skew));
+            }
             else if(cardinality > 1)
-                pdfuncbase = new uniform_int_dist_engine<prng_type, col_data_type>(prng, 1,
-                    cardinality);
+            {
+                if(skew == skewness::NO)
+                    pdfuncbase = new uniform_int_dist_engine<prng_type, col_data_type>(prng, 1,
+                        cardinality);
+                else
+                    pdfuncbase = new zipf_distribution<prng_type, col_data_type>(prng,
+                        cardinality, get_alpha_value(skew));
+            }
         }
 
     public:
-        normal_int_column(prng_engine<prng_type>& prng, const table_type& table, const string& col_name,
-            const float cardinality) : column_type<col_data_type>(col_name), prng(prng), 
-            table(table), cardinality(cardinality)
+        normal_int_column(prng_engine<prng_type>& prng, const table_type& table, 
+            const string& col_name, const float cardinality, const skewness skew = skewness::NO) : 
+            column_type<col_data_type>(col_name), prng(prng), table(table), 
+            cardinality(cardinality), skew(skew)
         {
             set_pdf_context();
         }
@@ -313,6 +353,7 @@ namespace redgene
         float cardinality;
         uint_fast16_t str_length;
         bool is_var_length;
+        const skewness skew;
         prob_dist_base<prng_type>* pdfuncbase = nullptr;
         rand_str_generator<prng_type>* rand_str_gen = nullptr;
 
@@ -321,22 +362,39 @@ namespace redgene
             if(cardinality == 1)
                 pdfuncbase = new simple_incrementer<>();
             else if(cardinality < 1)
-                pdfuncbase = new uniform_int_dist_engine<>(prng, 1, 
-                    (table.get_row_count()*cardinality));
+            {
+                if(skew == skewness::NO)
+                    pdfuncbase = new uniform_int_dist_engine<>(prng, 1, 
+                        (table.get_row_count()*cardinality));
+                else
+                    pdfuncbase = new zipf_distribution<>(prng,
+                        table.get_row_count(), get_alpha_value(skew));
+            }
             else if(cardinality > 1)
-                pdfuncbase = new uniform_int_dist_engine<>(prng, 1,
-                    cardinality);
+            {
+                if(skew == skewness::NO)
+                    pdfuncbase = new uniform_int_dist_engine<>(prng, 1,
+                        cardinality);
+                else
+                    pdfuncbase = new zipf_distribution<>(prng,
+                        cardinality, get_alpha_value(skew));
+            }
 
             if(cardinality >= 0.7 && cardinality <= 1.0)
-                rand_str_gen = new rand_str_generator<prng_type>(str_length, is_var_length, true);
+            {
+                bool bypass_warehouse_check = !(is_var_length && skew != skewness::NO);
+                rand_str_gen = new rand_str_generator<prng_type>(str_length, is_var_length, 
+                    bypass_warehouse_check);
+            }
             else if((cardinality > 0 && cardinality < 0.7) || cardinality > 1)
                 rand_str_gen = new rand_str_generator<prng_type>(str_length, is_var_length, false);
         }
     public:
         normal_string_column(prng_engine<prng_type>& prng, const table_type& table, const string& col_name,
-            const float cardinality, const uint_fast16_t str_length = 10, const bool var_length = false) : 
-            column_type<col_data_type>(col_name),
-            prng(prng), table(table), cardinality(cardinality), str_length(str_length), is_var_length(var_length)
+            const float cardinality, const skewness skew = skewness::NO, const uint_fast16_t str_length = 10, 
+            const bool var_length = false) : column_type<col_data_type>(col_name),
+            prng(prng), table(table), cardinality(cardinality), skew(skew), str_length(str_length), 
+            is_var_length(var_length)
         {
             set_pdf_context();
         }
@@ -357,4 +415,5 @@ namespace redgene
             return rand_str;
         }
     };
+
 }
