@@ -8,7 +8,7 @@
             "name": "rand_engine",
             "type": "cppdbg",
             "request": "launch",
-            "program": "/home/kp1808/vscode_share/rand_engine/rand_engine",
+            "program": "/home/kp1808/vscode_share/rand_engine/redgene",
             "args": [],
             "stopAtEntry": false,
             "cwd": "/home/kp1808/vscode_share/rand_engine",

@@ -483,6 +483,11 @@ namespace redgene
                 set_table_metadata();
                 datagen();
             }
+            else
+            {
+                throw runtime_error("json file is not ReDGene valid!");
+            }
+            
         }
 
         void set_prng_engine()
@@ -553,6 +558,7 @@ namespace redgene
                         float cardinality;
                         skewness skew = skewness::NO;
                         uint_fast16_t string_length = 10;
+                        bool var_length = false;
 
                         if(column_obj.find("cardinality") != column_obj.end())
                             cardinality = column_obj.find("cardinality").value().get<float>();
@@ -563,8 +569,11 @@ namespace redgene
                         if(column_obj.find("length") != column_obj.end())
                             string_length = column_obj.find("length").value().get<uint_fast16_t>();
 
+                        if(column_obj.find("var_length") != column_obj.end())
+                            var_length = column_obj.find("var_length").value().get<bool>();
+
                         column_metadata_obj = new normal_string_column(*prng, *table_metadata_obj, 
-                            column_name, cardinality, skew);
+                            column_name, cardinality, skew, string_length, var_length);
                     }
                     else if(column_type == redgene_types::REAL)
                     {

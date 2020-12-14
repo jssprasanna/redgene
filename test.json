@@ -1,11 +1,11 @@
 {
-    "prng":"MT19937",
-	"seed":1729,
+   "prng":"MT19937",
+	"seed":1808,
 	"tables":
 	[
 		{
 			"table_name": "tab1",
-			"row_count": 100,
+			"row_count": 1000000,
 			"columns": 
 			[
                 {
@@ -35,15 +35,18 @@
                 },
 				{
 					"column_name": "col6",
-					"cardinality": 1,
-					"type": "STRING"
+					"cardinality": 0.2,
+                    "type": "STRING",
+                    "length": 15,
+                    "skewness": "EXTREME"
 				},
 				{
 					"column_name": "col7",
 					"cardinality": 0.3,
 					"type": "STRING",
                     "length": 25,
-                    "skewness": "HIGH"
+                    "skewness": "HIGH",
+                    "var_length": true
 				}
 			]
         }

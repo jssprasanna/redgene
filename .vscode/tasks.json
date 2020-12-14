@@ -11,7 +11,7 @@
 				"-g",
 				"main.cpp",
 				"-o",
-				"rand_engine"
+				"redgene"
 			],
 			"options": {
 				"cwd": "/home/kp1808/vscode_share/rand_engine"
