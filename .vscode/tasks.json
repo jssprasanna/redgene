@@ -6,6 +6,7 @@
 			"label": "rand_engine",
 			"command": "/usr/bin/g++",
 			"args": [
+				"-std=c++11",
 				"-Woverflow",
 				"-g",
 				"main.cpp",

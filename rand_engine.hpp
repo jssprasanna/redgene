@@ -327,7 +327,7 @@ namespace redgene
         prng_base<UIntTypes>* p1;
     public:
         using result_type = UIntTypes;
-        prng_engine(random_engines engine)
+        /* prng_engine(random_engines engine)
         {
             switch(engine)
             {
@@ -355,8 +355,8 @@ namespace redgene
                 default:
                     p1 = new default_prng<UIntTypes>();
             }
-        }
-        prng_engine(random_engines engine, UIntTypes seed)
+        } */
+        prng_engine(random_engines engine = DEFAULT, UIntTypes seed = 1729)
         {
             switch(engine)
             {

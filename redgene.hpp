@@ -5,13 +5,13 @@
 #include "json.hpp"
 #include <type_traits>
 
-using namespace redgene;
 using json = nlohmann::json;
 
 namespace redgene
 {
     //reference zipf alpha value: NO = NA, LOW = 0.5, MEDIUM = 0.9, HIGH = 1.1, EXTREME = 1.5
-    using skewness = enum { NO = 1, LOW, MEDIUM, HIGH, EXTREME };
+    using skewness = enum skewness { NO = 1, LOW, MEDIUM, HIGH, EXTREME };
+    using redgene_types = enum redgene_types { INT, REAL, STRING };
 
     const float get_alpha_value(const skewness skew)
     {
@@ -48,15 +48,16 @@ namespace redgene
         bool validate();
     public:
         redgene_validator() = delete;
-        redgene_validator(const string& json_filename);
-        bool is_valid();
+        redgene_validator(const string json_filename);
+        json& get_redgene_valid_json();
+        bool is_valid() const;
     };
 
     const set<string> redgene_validator::valid_types = {"INT", "REAL", "STRING"};
     const set<string> redgene_validator::valid_constraints = {"PK", "FK", "COMP_PK", "COMP_FK", "FK_UNIQUE"};
     const set<string> redgene_validator::valid_skewness = {"NO", "LOW", "MEDIUM", "HIGH", "EXTREME"};
 
-    redgene_validator::redgene_validator(const string& json_filename)
+    redgene_validator::redgene_validator(const string json_filename)
     {
         try
         {
@@ -78,7 +79,7 @@ namespace redgene
         }  
     }
 
-    bool redgene_validator::is_valid()
+    bool redgene_validator::is_valid() const
     {
         return valid;
     }
@@ -214,18 +215,42 @@ namespace redgene
         return true;
     }
 
+    json& redgene_validator::get_redgene_valid_json()
+    {
+        return redgene_json;
+    }
+
+    class column;
 
     //TABLE ATTRIBUTES SECTION
-    class table_type
+    class table
     {
     private:
         const string table_name;
         const uint_fast64_t row_count;
+        unordered_map<string, column*> col_map;
+        vector<string> insert_order;
     public:
-        table_type(const string& table_name, const uint_fast64_t row_count)
+        table(const string& table_name, const uint_fast64_t row_count)
             : table_name(table_name), row_count(row_count)
         {
 
+        }
+
+        void insert_column_metadata_obj(string& column_name, column* col_metadata)
+        {
+            col_map.insert(pair<string, column*>(column_name, col_metadata));
+            insert_order.push_back(column_name);
+        }
+
+        unordered_map<string, column*>& get_column_map()
+        {
+            return col_map;
+        }
+
+        vector<string> get_column_order()
+        {
+            return insert_order;
         }
 
         string get_table_name() const
@@ -240,13 +265,14 @@ namespace redgene
     };
 
     //COLUMN ATTRIBUTES SECTION
-    template <typename col_data_type>
-    class column_type
+    class column
     {
     protected:
         const string col_name;
+        const redgene_types data_type;
     public:
-        column_type(const string& col_name) : col_name(col_name)
+        column(const string& col_name, const redgene_types data_type) : 
+            col_name(col_name), data_type(data_type)
         {
 
         }
@@ -255,49 +281,52 @@ namespace redgene
             return col_name;
         }
 
-        virtual col_data_type operator()() = 0;
-        virtual ~column_type<col_data_type>() = default;
+        redgene_types get_type() const
+        {
+            return data_type;
+        }
+
+        virtual ~column() = default;
     };
 
-    template <typename col_data_type = uint_fast64_t, typename prng_type = uint_fast64_t>
-    class normal_int_column : public column_type<col_data_type>
+    class normal_int_column : public column
     {
     private:
-        prng_engine<prng_type>& prng;
-        const table_type& table;
+        prng_engine<uint_fast64_t>& prng;
+        const table& _table;
         float cardinality;
         const skewness skew;
 
-        prob_dist_base<col_data_type>* pdfuncbase = nullptr;
+        prob_dist_base<uint_fast64_t>* pdfuncbase = nullptr;
 
         void set_pdf_context()
         {
             if(cardinality == 1)
-                pdfuncbase = new simple_incrementer<col_data_type>();
+                pdfuncbase = new simple_incrementer<uint_fast64_t>();
             else if(cardinality < 1)
             {   
                 if(skew == skewness::NO)
-                    pdfuncbase = new uniform_int_dist_engine<prng_type, col_data_type>(prng, 1,
-                        (table.get_row_count()*cardinality));
+                    pdfuncbase = new uniform_int_dist_engine<uint_fast64_t, uint_fast64_t>(prng, 1,
+                        (_table.get_row_count()*cardinality));
                 else
-                    pdfuncbase = new zipf_distribution<prng_type, col_data_type>(prng,
-                        table.get_row_count(), get_alpha_value(skew));
+                    pdfuncbase = new zipf_distribution<uint_fast64_t, uint_fast64_t>(prng,
+                        _table.get_row_count(), get_alpha_value(skew));
             }
             else if(cardinality > 1)
             {
                 if(skew == skewness::NO)
-                    pdfuncbase = new uniform_int_dist_engine<prng_type, col_data_type>(prng, 1,
+                    pdfuncbase = new uniform_int_dist_engine<uint_fast64_t, uint_fast64_t>(prng, 1,
                         cardinality);
                 else
-                    pdfuncbase = new zipf_distribution<prng_type, col_data_type>(prng,
+                    pdfuncbase = new zipf_distribution<uint_fast64_t, uint_fast64_t>(prng,
                         cardinality, get_alpha_value(skew));
             }
         }
 
     public:
-        normal_int_column(prng_engine<prng_type>& prng, const table_type& table, 
+        normal_int_column(prng_engine<uint_fast64_t>& prng, const table& table, 
             const string& col_name, const float cardinality, const skewness skew = skewness::NO) : 
-            column_type<col_data_type>(col_name), prng(prng), table(table), 
+            column(col_name, redgene_types::INT), prng(prng), _table(table), 
             cardinality(cardinality), skew(skew)
         {
             set_pdf_context();
@@ -308,27 +337,26 @@ namespace redgene
             delete pdfuncbase;
         }
 
-        inline col_data_type operator()()
+        inline uint_fast64_t yield()
         {
             return (*pdfuncbase)();
         }
     };
 
-    template <typename col_data_type = double, typename prng_type = uint_fast64_t>
-    class normal_real_column : public column_type<col_data_type>
+    class normal_real_column : public column
     {
     private:
-        prng_engine<prng_type>& prng;
-        const table_type& table;
+        prng_engine<uint_fast64_t>& prng;
+        const table& _table;
         float real_min;
         float real_max;
-        prob_dist_base<col_data_type>* pdfuncbase = nullptr;
+        prob_dist_base<double>* pdfuncbase = nullptr;
     public:
-        normal_real_column(prng_engine<prng_type>& prng, const table_type& table, const string& col_name,
-            const float real_min = 0.0, const float real_max = 1.0) : column_type<col_data_type>(col_name),
-            prng(prng), table(table), real_min(real_min), real_max(real_max)
+        normal_real_column(prng_engine<uint_fast64_t>& prng, const table& table, const string& col_name,
+            const float real_min = 0.0, const float real_max = 1.0) : column(col_name, redgene_types::REAL),
+            prng(prng), _table(table), real_min(real_min), real_max(real_max)
         {
-            pdfuncbase = new uniform_real_dist_engine<prng_type, col_data_type>(prng, 
+            pdfuncbase = new uniform_real_dist_engine<uint_fast64_t, double>(prng, 
                 real_min, real_max);
         }
 
@@ -337,25 +365,24 @@ namespace redgene
             delete pdfuncbase;
         }
 
-        col_data_type operator()()
+        inline double yield()
         {
             return (*pdfuncbase)();
         }
 
     };
 
-    template <typename col_data_type = string, typename prng_type = uint_fast64_t>
-    class normal_string_column : public column_type<string>
+    class normal_string_column : public column
     {
     private:
-        prng_engine<prng_type>& prng;
-        const table_type& table;
+        prng_engine<uint_fast64_t>& prng;
+        const table& _table;
         float cardinality;
         uint_fast16_t str_length;
         bool is_var_length;
         const skewness skew;
-        prob_dist_base<prng_type>* pdfuncbase = nullptr;
-        rand_str_generator<prng_type>* rand_str_gen = nullptr;
+        prob_dist_base<uint_fast64_t>* pdfuncbase = nullptr;
+        rand_str_generator<>* rand_str_gen = nullptr;
 
         void set_pdf_context()
         {
@@ -365,10 +392,10 @@ namespace redgene
             {
                 if(skew == skewness::NO)
                     pdfuncbase = new uniform_int_dist_engine<>(prng, 1, 
-                        (table.get_row_count()*cardinality));
+                        (_table.get_row_count()*cardinality));
                 else
                     pdfuncbase = new zipf_distribution<>(prng,
-                        table.get_row_count(), get_alpha_value(skew));
+                        _table.get_row_count(), get_alpha_value(skew));
             }
             else if(cardinality > 1)
             {
@@ -383,17 +410,17 @@ namespace redgene
             if(cardinality >= 0.7 && cardinality <= 1.0)
             {
                 bool bypass_warehouse_check = !(is_var_length && skew != skewness::NO);
-                rand_str_gen = new rand_str_generator<prng_type>(str_length, is_var_length, 
+                rand_str_gen = new rand_str_generator<>(str_length, is_var_length, 
                     bypass_warehouse_check);
             }
             else if((cardinality > 0 && cardinality < 0.7) || cardinality > 1)
-                rand_str_gen = new rand_str_generator<prng_type>(str_length, is_var_length, false);
+                rand_str_gen = new rand_str_generator<>(str_length, is_var_length, false);
         }
     public:
-        normal_string_column(prng_engine<prng_type>& prng, const table_type& table, const string& col_name,
+        normal_string_column(prng_engine<uint_fast64_t>& prng, const table& table, const string& col_name,
             const float cardinality, const skewness skew = skewness::NO, const uint_fast16_t str_length = 10, 
-            const bool var_length = false) : column_type<col_data_type>(col_name),
-            prng(prng), table(table), cardinality(cardinality), skew(skew), str_length(str_length), 
+            const bool var_length = false) : column(col_name, redgene_types::STRING),
+            prng(prng), _table(table), cardinality(cardinality), skew(skew), str_length(str_length), 
             is_var_length(var_length)
         {
             set_pdf_context();
@@ -407,12 +434,222 @@ namespace redgene
                 delete pdfuncbase;
         }
 
-        inline col_data_type operator()()
+        inline string yield()
         {
             string rand_str = "<error_in_string_gen>";
             if(rand_str_gen)
                 rand_str = (*rand_str_gen)((*pdfuncbase)());
             return rand_str;
+        }
+    };
+
+    class redgene_engine
+    {
+    private:    
+        redgene_validator& rgene_validator;
+        prng_engine<uint_fast64_t>* prng = nullptr;
+        map<string, table*> schema_map;
+    public:
+        redgene_engine() = delete;
+        redgene_engine(redgene_validator& rgene_validator) :
+            rgene_validator(rgene_validator)
+        {
+
+        }
+        ~redgene_engine()
+        {
+            if(prng)
+                delete prng;
+
+            for(auto table : schema_map)
+            {
+                for(auto column : table.second->get_column_map())
+                {
+                    delete column.second;
+                }
+                delete table.second;
+            }
+        }
+        void generate()
+        {
+            generate_redgene_structures();
+        }
+    private:
+        void generate_redgene_structures()
+        {
+            if(rgene_validator.is_valid())
+            {
+                set_prng_engine();
+                set_table_metadata();
+                datagen();
+            }
+        }
+
+        void set_prng_engine()
+        {
+            json& rgene_json = rgene_validator.get_redgene_valid_json();
+            auto prng_seed = (rgene_json.find("seed") != rgene_json.end()) ?
+                rgene_json.find("seed").value().get<uint_fast64_t>() : 1729;
+            
+            string prng_type = (rgene_json.find("prng") != rgene_json.end()) ? 
+                rgene_json.find("prng").value().get<string>() : "DEFAULT";
+            random_engines prng_engine_type;
+
+            if(prng_type == "MINSTD_RAND0")
+                prng_engine_type = random_engines::MINSTD_RAND0;
+            else if(prng_type == "MINSTD_RAND1")
+                prng_engine_type = random_engines::MINSTD_RAND1;
+            else if(prng_type == "MT19937")
+                prng_engine_type = random_engines::MT19937;
+            else if(prng_type == "MT19937_64")
+                prng_engine_type = random_engines::MT19937_64;
+            else if(prng_type == "RANLUX24")
+                prng_engine_type = random_engines::RANLUX24;
+            else if(prng_type == "RANLUX48")
+                prng_engine_type = random_engines::RANLUX48;
+
+            prng = new prng_engine<uint_fast64_t>(prng_engine_type, prng_seed);
+        }
+
+        void set_table_metadata()
+        {
+            json& rgene_json = rgene_validator.get_redgene_valid_json();
+            auto table_arr = rgene_json.find("tables");
+
+            //individual table metadata handling
+            for(auto table_obj : table_arr.value())
+            {
+                auto table_name = table_obj.find("table_name").value().get<string>();
+                auto row_count = table_obj.find("row_count").value().get<uint_fast64_t>();
+
+                //table object
+                table* table_metadata_obj = new table(table_name, row_count);
+
+                //logic for individual column types
+                auto column_arr = table_obj.find("columns");
+                for(auto column_obj : column_arr.value())
+                {
+                    auto column_name = column_obj.find("column_name").value().get<string>();
+                    auto column_type = get_redgene_type(column_obj.find("type").value().get<string>());
+
+                    //column object
+                    column* column_metadata_obj;
+
+                    if(column_type == redgene_types::INT)
+                    {
+                        float cardinality;
+                        skewness skew = skewness::NO;
+                        if(column_obj.find("cardinality") != column_obj.end())
+                            cardinality = column_obj.find("cardinality").value().get<float>();
+                        
+                        if(column_obj.find("skewness") != column_obj.end())
+                            skew = get_skewness_type(column_obj.find("skewness").value().get<string>());
+
+                        column_metadata_obj = new normal_int_column(*prng, *table_metadata_obj,
+                            column_name, cardinality, skew);
+                    }
+                    else if(column_type == redgene_types::STRING)
+                    {
+                        float cardinality;
+                        skewness skew = skewness::NO;
+                        uint_fast16_t string_length = 10;
+
+                        if(column_obj.find("cardinality") != column_obj.end())
+                            cardinality = column_obj.find("cardinality").value().get<float>();
+                        
+                        if(column_obj.find("skewness") != column_obj.end())
+                            skew = get_skewness_type(column_obj.find("skewness").value().get<string>());
+
+                        if(column_obj.find("length") != column_obj.end())
+                            string_length = column_obj.find("length").value().get<uint_fast16_t>();
+
+                        column_metadata_obj = new normal_string_column(*prng, *table_metadata_obj, 
+                            column_name, cardinality, skew);
+                    }
+                    else if(column_type == redgene_types::REAL)
+                    {
+                        float real_min = 0.0;
+                        float real_max = 1.0;
+
+                        if(column_obj.find("real_min") != column_obj.end())
+                            real_min = column_obj.find("real_min").value().get<float>();
+                        if(column_obj.find("real_max") != column_obj.end())
+                            real_max = column_obj.find("real_max").value().get<float>();
+
+                        column_metadata_obj = new normal_real_column(*prng, *table_metadata_obj,
+                            column_name, real_min, real_max);
+                    }
+
+                    table_metadata_obj->insert_column_metadata_obj(column_name, column_metadata_obj);
+                }
+                schema_map.insert(pair<string, table*>(table_name, table_metadata_obj));
+            }
+        }
+
+        void datagen()
+        {
+            //iterate over tables
+            for(auto table_obj : schema_map)
+            {
+                ofstream flatfile(table_obj.first+".csv", std::ofstream::trunc);
+
+                auto table_metadata_obj = table_obj.second;
+                auto column_map = table_metadata_obj->get_column_map();
+                auto column_order = table_metadata_obj->get_column_order();
+
+                for(uint_fast64_t i = 0; i < table_metadata_obj->get_row_count(); ++i)
+                {
+                    for(auto itr = column_order.begin(); itr != column_order.end(); ++itr)
+                    {
+                        if(column_map[*itr]->get_type() == redgene_types::INT)
+                            flatfile << dynamic_cast<normal_int_column*>(column_map[*itr])->yield();
+                        else if(column_map[*itr]->get_type() == redgene_types::REAL)
+                            flatfile << dynamic_cast<normal_real_column*>(column_map[*itr])->yield();
+                        else if(column_map[*itr]->get_type() == redgene_types::STRING)
+                            flatfile << dynamic_cast<normal_string_column*>(column_map[*itr])->yield();
+                        
+                        if(column_order.end() - itr != 1)
+                            flatfile << '|';
+                    }
+                    flatfile << endl;
+                }
+
+                if(flatfile.is_open())
+                {
+                    flatfile.flush();
+                    flatfile.close();
+                }
+            }
+        }
+
+        skewness get_skewness_type(const string& skew_string)
+        {
+            skewness skew;
+            if(skew_string == "NO")
+                skew = skewness::NO;
+            else if(skew_string == "LOW")
+                skew = skewness::LOW;
+            else if(skew_string == "MEDIUM")
+                skew = skewness::MEDIUM;
+            else if(skew_string == "HIGH")
+                skew = skewness::HIGH;
+            else if(skew_string == "EXTREME")
+                skew = skewness::EXTREME;
+            
+            return skew;
+        }
+
+        redgene_types get_redgene_type(const string& type_string)
+        {
+            redgene_types type;
+            if(type_string == "INT")
+                type = redgene_types::INT;
+            else if(type_string == "REAL")
+                type = redgene_types::REAL;
+            else if(type_string == "STRING")
+                type = redgene_types::STRING;
+            
+            return type;
         }
     };
 
