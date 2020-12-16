@@ -11,6 +11,7 @@ namespace redgene
         bool is_variable_length = false;
         bool bypass_warehouse = true;
         static const char alphabet[];
+        uint_fast16_t var_length_base = 6;
     public:
         
         rand_str_generator() = default;
@@ -21,6 +22,8 @@ namespace redgene
         {
             if(!bypass_warehouse)
                 rand_str_warehouse = new map<UIntType, string>();
+            if(is_variable_length && str_length <= 6)
+                is_variable_length = false;
         }
         string operator()(UIntType key)
         {
@@ -32,7 +35,7 @@ namespace redgene
                 mt19937_64 str_prng(key);
                 if(is_variable_length)
                 {
-                    uniform_int_distribution<uint_fast16_t> rand_var_len(1, str_length);
+                    uniform_int_distribution<uint_fast16_t> rand_var_len(var_length_base, str_length);
                     cond_str_length = rand_var_len(str_prng);
                 }
                 rand_str.reserve(cond_str_length);
