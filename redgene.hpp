@@ -47,7 +47,6 @@ namespace redgene
         static const set<string> valid_constraints;
         static const set<string> valid_skewness;
         bool validate();
-        bool is_ref_constraint(json& json_node);
         bool validate_fk_refspec(const string& ref_tab, 
             const string& ref_col);
     public:
@@ -55,6 +54,7 @@ namespace redgene
         redgene_validator(const string json_filename);
         json& get_redgene_valid_json();
         bool is_valid() const;
+        bool is_ref_constraint(json& json_node);
     };
 
     const set<string> redgene_validator::valid_types = {"INT", "REAL", "STRING"};
@@ -131,9 +131,10 @@ namespace redgene
                 aux_col_names_set.insert(col_name_str);
 
                 auto col_data_type = column_obj.find("type");
-                if(col_data_type == column_obj.end() && is_ref_constraint(column_obj))
+                bool ref_constraint = is_ref_constraint(column_obj);
+                if(col_data_type == column_obj.end() && !ref_constraint)
                     return false;
-                else
+                else if(!ref_constraint)
                 {
                     auto col_data_type_str = col_data_type.value().get<string>();
                     transform(col_data_type_str.begin(), col_data_type_str.end(),
@@ -172,6 +173,7 @@ namespace redgene
                             return false;
                     }
                     //check whether references are provided for ref constraints
+                    //FOREIGN KEY
                     else if(constraint_val == "FK")
                     {
                         auto ref_table = column_obj.find("ref_tab");
@@ -180,8 +182,9 @@ namespace redgene
                         if((ref_table == column_obj.end()) || (ref_column == column_obj.end()))
                             return false;
                         
-                        validate_fk_refspec(ref_table.value().get<string>(),
-                            ref_column.value().get<string>());
+                        if(!validate_fk_refspec(ref_table.value().get<string>(),
+                            ref_column.value().get<string>()))
+                            return false;
                     }
                 }
 
@@ -524,6 +527,16 @@ namespace redgene
                 rand_str = (*rand_str_gen)((*pdfuncbase)());
             return rand_str;
         }
+
+        uint_fast16_t get_str_length() const
+        {
+            return str_length;
+        }
+
+        bool get_is_var_length() const
+        {
+            return is_var_length;
+        }
     };
 
 
@@ -538,7 +551,7 @@ namespace redgene
         
         ~pk_int_column() = default;
 
-        inline uint_fast64_t yield()
+        virtual inline uint_fast64_t yield()
         {
             return this->normal_int_column::yield();
         }
@@ -557,12 +570,55 @@ namespace redgene
 
         ~pk_string_column() = default;
 
-        inline string yield()
+        virtual inline string yield()
         {
             return normal_string_column::yield();
         }
     };
     
+
+    class fk_int_column : public normal_int_column
+    {
+    private:
+        float fk_cardinality;
+    public:
+        fk_int_column(prng_engine<uint_fast64_t>& prng, const table& table,
+            const string& col_name, const float cardinality, const skewness skew = skewness::NO)
+            : normal_int_column(prng, table, col_name, cardinality, skew), fk_cardinality(cardinality)
+        {
+
+        }
+
+        ~fk_int_column() = default;
+
+        virtual inline uint_fast64_t yield()
+        {
+            return normal_int_column::yield();
+        }
+    };
+
+    class fk_string_column : public normal_string_column
+    {
+    private:
+        float cardinality;
+        uint_fast16_t str_length;
+        bool var_length;
+    public:
+        fk_string_column(prng_engine<uint_fast64_t>& prng, const table& table,
+            const string& col_name, const float cardinality, const uint_fast16_t str_length, 
+            const bool var_length, const skewness skew = skewness::NO) :
+            normal_string_column(prng, table, col_name, cardinality, skew, str_length, var_length)
+        {
+
+        }
+
+        ~fk_string_column() = default;
+
+        virtual inline string yield()
+        {
+            return normal_string_column::yield();
+        }
+    };
 
     class redgene_engine
     {
@@ -656,7 +712,17 @@ namespace redgene
                 for(auto column_obj : column_arr.value())
                 {
                     auto column_name = column_obj.find("column_name").value().get<string>();
-                    auto column_type = get_redgene_type(column_obj.find("type").value().get<string>());
+                    auto constraint_obj = column_obj.find("constraint");
+                    redgene_types column_type;
+                    
+                    if(constraint_obj == column_obj.end() || !(rgene_validator.is_ref_constraint(column_obj)))
+                        column_type = get_redgene_type(column_obj.find("type").value().get<string>());
+                    else
+                    {
+                        column_type = schema_map.find(
+                            column_obj.find("ref_tab").value().get<string>())->second->get_column_map().
+                            find(column_obj.find("ref_col").value().get<string>())->second->get_type();
+                    }
 
                     //column object
                     column* column_metadata_obj;
@@ -664,23 +730,30 @@ namespace redgene
                     if(column_type == redgene_types::INT)
                     { 
                         constraints constraint;
+                        float cardinality;
+                        skewness skew = skewness::NO;
+                        if(column_obj.find("skewness") != column_obj.end())
+                            skew = get_skewness_type(column_obj.find("skewness").value().get<string>());
                         
-                        if(column_obj.find("constraint") != column_obj.end())
+                        if(constraint_obj != column_obj.end())
                         {
-                            constraint = get_redgene_constraint(column_obj.find("constraint").value().get<string>());
+                            constraint = get_redgene_constraint(constraint_obj.value().get<string>());
                             if(constraint == constraints::PK)
                                 column_metadata_obj = new pk_int_column(*prng, *table_metadata_obj, column_name);
+                            else if(constraint == constraints::FK)
+                            {
+                                //cardinality needs to be computed, from ref_tab.ref_col
+                                float cardinality = schema_map.find(
+                                    column_obj.find("ref_tab").value().get<string>())->second->get_row_count();
+                
+                                column_metadata_obj = new fk_int_column(*prng, *table_metadata_obj, column_name,
+                                    cardinality, skew);
+                            }
                         }
                         else
                         {
-                            float cardinality;
-                            skewness skew = skewness::NO;
-
                             if(column_obj.find("cardinality") != column_obj.end())
                                 cardinality = column_obj.find("cardinality").value().get<float>();
-                        
-                            if(column_obj.find("skewness") != column_obj.end())
-                                skew = get_skewness_type(column_obj.find("skewness").value().get<string>());
 
                             column_metadata_obj = new normal_int_column(*prng, *table_metadata_obj,
                                 column_name, cardinality, skew);
@@ -691,6 +764,8 @@ namespace redgene
                         constraints constraint;
                         uint_fast16_t string_length = 10;
                         bool var_length = false;
+                        float cardinality;
+                        skewness skew = skewness::NO;
 
                         if(column_obj.find("length") != column_obj.end())
                             string_length = column_obj.find("length").value().get<uint_fast16_t>();
@@ -698,24 +773,40 @@ namespace redgene
                         if(column_obj.find("var_length") != column_obj.end())
                             var_length = column_obj.find("var_length").value().get<bool>();
 
-                        if(column_obj.find("constraint") != column_obj.end())
+                        if(column_obj.find("cardinality") != column_obj.end())
+                            cardinality = column_obj.find("cardinality").value().get<float>();
+                        
+                        if(column_obj.find("skewness") != column_obj.end())
+                            skew = get_skewness_type(column_obj.find("skewness").value().get<string>());
+
+                        if(constraint_obj != column_obj.end())
                         {
-                            constraint = get_redgene_constraint(column_obj.find("constraint").value().get<string>());
+                            constraint = get_redgene_constraint(constraint_obj.value().get<string>());
                             if(constraint == constraints::PK)
                                 column_metadata_obj = new pk_string_column(*prng, *table_metadata_obj, column_name,
                                     string_length, var_length);
+                            else if(constraint == constraints::FK)
+                            {
+                                //cardinality needs to be computed, from ref_tab.ref_col
+                                cardinality = schema_map.find(
+                                    column_obj.find("ref_tab").value().get<string>()
+                                    )->second->get_row_count();
+                                //str_length needs to be obtained from ref_tab.ref_col
+
+                                auto ref_col_obj_ref = dynamic_cast<pk_string_column*>((schema_map.find(
+                                    column_obj.find("ref_tab").value().get<string>()
+                                    )->second->get_column_map()).find(column_obj.find("ref_col").value().get<string>())->second);
+                                
+                                string_length = ref_col_obj_ref->get_str_length();
+                                //var_length needs to be obtained from ref_tab.ref_col
+                                var_length = ref_col_obj_ref->get_is_var_length();
+
+                                column_metadata_obj = new fk_string_column(*prng, *table_metadata_obj, column_name,
+                                    cardinality, string_length, var_length, skew);
+                            }
                         }
                         else
                         {
-                            float cardinality;
-                            skewness skew = skewness::NO;
-
-                            if(column_obj.find("cardinality") != column_obj.end())
-                                cardinality = column_obj.find("cardinality").value().get<float>();
-                        
-                            if(column_obj.find("skewness") != column_obj.end())
-                                skew = get_skewness_type(column_obj.find("skewness").value().get<string>());
-
                             column_metadata_obj = new normal_string_column(*prng, *table_metadata_obj, 
                                 column_name, cardinality, skew, string_length, var_length);
                         }

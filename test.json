@@ -63,9 +63,13 @@
                 {
                     "column_name": "pkcol",
                     "constraint": "PK",
-                    "type": "STRING",
-                    "length": 15,
-                    "var_length": true
+                    "type": "STRING"
+                },
+                {
+                    "column_name": "fkcol",
+                    "constraint": "FK",
+                    "ref_tab": "tab1",
+                    "ref_col": "pkcol"
                 },
                 {
                     "column_name": "col1",
@@ -79,6 +83,25 @@
                     "skewness": "EXTREME",
                     "length": 50,
                     "var_length": true
+                }
+            ]
+        },
+        {
+            "table_name" : "tab3",
+            "row_count" : 5000,
+            "columns":
+            [
+                {
+                    "column_name": "fkcol",
+                    "constraint": "FK",
+                    "ref_tab": "tab2",
+                    "ref_col": "pkcol"
+                },
+                {
+                    "column_name": "col1",
+                    "type": "REAL",
+                    "real_min": 100,
+                    "real_max": 150
                 }
             ]
         }
