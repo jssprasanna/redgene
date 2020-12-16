@@ -47,5 +47,5 @@
         "typeinfo": "cpp",
         "valarray": "cpp"
     },
-    "workbench.editor.enablePreview": true
+    "workbench.editor.enablePreview": false
 }
