@@ -47,5 +47,10 @@
         "typeinfo": "cpp",
         "valarray": "cpp"
     },
-    "workbench.editor.enablePreview": false
+    "workbench.editor.enablePreview": false,
+    "csv-preview.capitalizeHeaders": false,
+    "csv-preview.commentCharacter": "",
+    "csv-preview.quoteMark": "",
+    "csv-preview.separator": "|",
+    "csv-preview.hasHeaders": false
 }

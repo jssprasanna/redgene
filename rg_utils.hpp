@@ -17,6 +17,7 @@ namespace redgene
         mt19937_64* str_prng;
         uniform_int_distribution<uint_fast16_t>* rand_var_len = nullptr;
         uniform_int_distribution<uint_fast8_t>* uidist = nullptr;
+        string* rand_str = nullptr;
     public:
         
         rand_str_generator() = default;
@@ -33,10 +34,11 @@ namespace redgene
             str_prng = new mt19937_64;
             rand_var_len = new uniform_int_distribution<uint_fast16_t>(var_length_base, str_length);
             uidist = new uniform_int_distribution<uint_fast8_t>(0, sizeof(alphabet)/sizeof(*alphabet)-2);
+            rand_str = new string(str_length, ' ');
         }
         string operator()(UIntType key)
         {
-            string rand_str;
+            rand_str->clear();
             uint_fast16_t cond_str_length = str_length;
             if(bypass_warehouse || 
                 (rand_str_warehouse->find(key) == rand_str_warehouse->end()))
@@ -46,18 +48,17 @@ namespace redgene
                 {
                     cond_str_length = (*rand_var_len)(*str_prng);
                 }
-                rand_str.reserve(cond_str_length);
-                
-                generate_n(back_inserter(rand_str), cond_str_length, 
+     
+                generate_n(back_inserter(*rand_str), cond_str_length, 
                     [&]() { return alphabet[(*uidist)(*str_prng)]; });
                 if(!bypass_warehouse)
-                    rand_str_warehouse->insert(pair<UIntType, string>(key, rand_str));
+                    rand_str_warehouse->insert(pair<UIntType, string>(key, *rand_str));
             }
             else
             {
-                rand_str = rand_str_warehouse->find(key)->second;
+                *rand_str = rand_str_warehouse->find(key)->second;
             }
-            return rand_str;
+            return *rand_str;
         }
         ~rand_str_generator()
         {
@@ -69,6 +70,8 @@ namespace redgene
                 delete rand_var_len;
             if(str_prng)
                 delete str_prng;
+            if(rand_str)
+                delete rand_str;
         }
     };
 
