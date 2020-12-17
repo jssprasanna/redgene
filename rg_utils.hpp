@@ -12,6 +12,11 @@ namespace redgene
         bool bypass_warehouse = true;
         static const char alphabet[];
         uint_fast16_t var_length_base = 6;
+
+        //moved from the call operator
+        mt19937_64* str_prng;
+        uniform_int_distribution<uint_fast16_t>* rand_var_len = nullptr;
+        uniform_int_distribution<uint_fast8_t>* uidist = nullptr;
     public:
         
         rand_str_generator() = default;
@@ -24,6 +29,10 @@ namespace redgene
                 rand_str_warehouse = new map<UIntType, string>();
             if(is_variable_length && str_length <= 6)
                 is_variable_length = false;
+            
+            str_prng = new mt19937_64;
+            rand_var_len = new uniform_int_distribution<uint_fast16_t>(var_length_base, str_length);
+            uidist = new uniform_int_distribution<uint_fast8_t>(0, sizeof(alphabet)/sizeof(*alphabet)-2);
         }
         string operator()(UIntType key)
         {
@@ -32,18 +41,15 @@ namespace redgene
             if(bypass_warehouse || 
                 (rand_str_warehouse->find(key) == rand_str_warehouse->end()))
             {
-                mt19937_64 str_prng(key);
+                str_prng->seed(key);
                 if(is_variable_length)
                 {
-                    uniform_int_distribution<uint_fast16_t> rand_var_len(var_length_base, str_length);
-                    cond_str_length = rand_var_len(str_prng);
+                    cond_str_length = (*rand_var_len)(*str_prng);
                 }
                 rand_str.reserve(cond_str_length);
                 
-                uniform_int_distribution<uint_fast8_t> uidist(0, 
-                    sizeof(alphabet)/sizeof(*alphabet)-2);
                 generate_n(back_inserter(rand_str), cond_str_length, 
-                    [&]() { return alphabet[uidist(str_prng)]; });
+                    [&]() { return alphabet[(*uidist)(*str_prng)]; });
                 if(!bypass_warehouse)
                     rand_str_warehouse->insert(pair<UIntType, string>(key, rand_str));
             }
@@ -56,9 +62,13 @@ namespace redgene
         ~rand_str_generator()
         {
             if(rand_str_warehouse)
-            {
                 delete rand_str_warehouse;
-            }
+            if(uidist)
+                delete uidist;
+            if(rand_var_len)
+                delete rand_var_len;
+            if(str_prng)
+                delete str_prng;
         }
     };
 
