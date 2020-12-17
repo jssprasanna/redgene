@@ -4,9 +4,14 @@ using namespace redgene;
 
 int main(int argc, char** argv)
 {
-    redgene_validator rg_validator("test.json");
+    if(argc != 2)
+    {
+        cout << "Insufficient arguments; redgene <schema_template.json>" << endl;
+        return EXIT_SUCCESS;
+    }
+    redgene_validator rg_validator(argv[1]);
     redgene_engine rg_engine(rg_validator);
     rg_engine.generate();
 
-    return 0;
+    return EXIT_SUCCESS;
 }

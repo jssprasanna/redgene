@@ -57,13 +57,15 @@
         },
         {
             "table_name" : "tab2",
-            "row_count" : 1000,
+            "row_count" : 100000,
             "columns":
             [
                 {
                     "column_name": "pkcol",
                     "constraint": "PK",
-                    "type": "STRING"
+                    "type": "STRING",
+                    "length": 15,
+					"var_length": true
                 },
                 {
                     "column_name": "fkcol",
@@ -88,7 +90,7 @@
         },
         {
             "table_name" : "tab3",
-            "row_count" : 5000,
+            "row_count" : 1000000,
             "columns":
             [
                 {

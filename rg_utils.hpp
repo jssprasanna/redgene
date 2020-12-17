@@ -48,9 +48,10 @@ namespace redgene
                 {
                     cond_str_length = (*rand_var_len)(*str_prng);
                 }
-     
-                generate_n(back_inserter(*rand_str), cond_str_length, 
-                    [&]() { return alphabet[(*uidist)(*str_prng)]; });
+                
+                for(uint_fast16_t i = 0; i < cond_str_length; ++i)
+                    *rand_str += std::move(alphabet[(*uidist)(*str_prng)]);
+
                 if(!bypass_warehouse)
                     rand_str_warehouse->insert(pair<UIntType, string>(key, *rand_str));
             }
