@@ -12,7 +12,7 @@ namespace redgene
     //reference zipf alpha value: NO = NA, LOW = 0.5, MEDIUM = 0.9, HIGH = 1.1, EXTREME = 1.5
     using skewness = enum skewness { NO, LOW, MEDIUM, HIGH, EXTREME };
     using redgene_types = enum redgene_types { INT, REAL, STRING };
-    using constraints = enum constraints { PK, FK, FK_UNIQUE, COMP_PK, COMP_FK };
+    using constraints = enum constraints { NONE, PK, FK, FK_UNIQUE, COMP_PK, COMP_FK };
 
     const float get_alpha_value(const skewness skew)
     {
@@ -173,8 +173,8 @@ namespace redgene
                             return false;
                     }
                     //check whether references are provided for ref constraints
-                    //FOREIGN KEY
-                    else if(constraint_val == "FK")
+                    //FOREIGN KEY (FK and FK_UNIQUE)
+                    else if(constraint_val == "FK" || constraint_val == "FK_UNIQUE")
                     {
                         auto ref_table = column_obj.find("ref_tab");
                         auto ref_column = column_obj.find("ref_col");
@@ -312,7 +312,7 @@ namespace redgene
     {
     private:
         const string table_name;
-        const uint_fast64_t row_count;
+        mutable uint_fast64_t row_count;
         unordered_map<string, column*> col_map;
         vector<string> insert_order;
     public:
@@ -347,6 +347,11 @@ namespace redgene
         {
             return row_count;
         }
+
+        void set_row_count(uint_fast64_t row_count)
+        {
+            this->row_count = row_count;
+        }
     };
 
     //COLUMN ATTRIBUTES SECTION
@@ -355,9 +360,11 @@ namespace redgene
     protected:
         const string col_name;
         const redgene_types data_type;
+        const constraints constraint;
     public:
-        column(const string& col_name, const redgene_types data_type) : 
-            col_name(col_name), data_type(data_type)
+        column(const string& col_name, const redgene_types data_type,
+            const constraints constraint) : 
+            col_name(col_name), data_type(data_type), constraint(constraint)
         {
 
         }
@@ -369,6 +376,11 @@ namespace redgene
         redgene_types get_type() const
         {
             return data_type;
+        }
+
+        constraints get_constraint_type() const
+        {
+            return constraint;
         }
 
         virtual ~column() = default;
@@ -412,7 +424,7 @@ namespace redgene
     public:
         normal_int_column(prng_engine<uint_fast64_t>& prng, const table& table, 
             const string& col_name, const float cardinality, const skewness skew = skewness::NO) : 
-            column(col_name, redgene_types::INT), prng(prng), _table(table), 
+            column(col_name, redgene_types::INT, constraints::NONE), prng(prng), _table(table), 
             cardinality(cardinality), skew(skew)
         {
             set_pdf_context();
@@ -439,8 +451,8 @@ namespace redgene
         prob_dist_base<double>* pdfuncbase = nullptr;
     public:
         normal_real_column(prng_engine<uint_fast64_t>& prng, const table& table, const string& col_name,
-            const float real_min = 0.0, const float real_max = 1.0) : column(col_name, redgene_types::REAL),
-            prng(prng), _table(table), real_min(real_min), real_max(real_max)
+            const float real_min = 0.0, const float real_max = 1.0) : column(col_name, redgene_types::REAL,
+            constraints::NONE), prng(prng), _table(table), real_min(real_min), real_max(real_max)
         {
             pdfuncbase = new uniform_real_dist_engine<uint_fast64_t, double>(prng, 
                 real_min, real_max);
@@ -505,7 +517,7 @@ namespace redgene
     public:
         normal_string_column(prng_engine<uint_fast64_t>& prng, const table& table, const string& col_name,
             const float cardinality, const skewness skew = skewness::NO, const uint_fast16_t str_length = 10, 
-            const bool var_length = false) : column(col_name, redgene_types::STRING),
+            const bool var_length = false) : column(col_name, redgene_types::STRING, constraints::NONE),
             prng(prng), _table(table), cardinality(cardinality), skew(skew), str_length(str_length), 
             is_var_length(var_length)
         {
@@ -615,6 +627,42 @@ namespace redgene
         ~fk_string_column() = default;
 
         virtual inline string yield()
+        {
+            return normal_string_column::yield();
+        }
+    };
+
+    class fk_unique_int_column : public normal_int_column
+    {
+    public:
+        fk_unique_int_column(prng_engine<uint_fast64_t>& prng, const table& table, 
+            const string& col_name) :
+            normal_int_column(prng, table, col_name, 1)
+        {
+
+        }
+
+        ~fk_unique_int_column() = default;
+
+        inline uint_fast64_t yield()
+        {
+            return normal_int_column::yield();
+        }
+    };
+
+    class fk_unique_string_column : public normal_string_column
+    {
+    public:
+        fk_unique_string_column(prng_engine<uint_fast64_t>& prng, const table& table,
+            const string& col_name, const uint_fast16_t str_length, const bool var_length) :
+            normal_string_column(prng, table, col_name, 1, skewness::NO, str_length, var_length)
+        {
+
+        }
+
+        ~fk_unique_string_column() = default;
+
+        inline string yield()
         {
             return normal_string_column::yield();
         }
@@ -749,6 +797,18 @@ namespace redgene
                                 column_metadata_obj = new fk_int_column(*prng, *table_metadata_obj, column_name,
                                     cardinality, skew);
                             }
+                            else if(constraint == constraints::FK_UNIQUE)
+                            {
+                                float cardinality = schema_map.find(
+                                    column_obj.find("ref_tab").value().get<string>())->second->get_row_count();
+                                
+                                if(row_count >= cardinality)
+                                {
+                                    row_count = cardinality;
+                                    table_metadata_obj->set_row_count(row_count);
+                                }
+                                column_metadata_obj = new fk_unique_int_column(*prng, *table_metadata_obj, column_name);
+                            }
                         }
                         else
                         {
@@ -791,8 +851,8 @@ namespace redgene
                                 cardinality = schema_map.find(
                                     column_obj.find("ref_tab").value().get<string>()
                                     )->second->get_row_count();
+                                
                                 //str_length needs to be obtained from ref_tab.ref_col
-
                                 auto ref_col_obj_ref = dynamic_cast<pk_string_column*>((schema_map.find(
                                     column_obj.find("ref_tab").value().get<string>()
                                     )->second->get_column_map()).find(column_obj.find("ref_col").value().get<string>())->second);
@@ -803,6 +863,29 @@ namespace redgene
 
                                 column_metadata_obj = new fk_string_column(*prng, *table_metadata_obj, column_name,
                                     cardinality, string_length, var_length, skew);
+                            }
+                            else if(constraint == constraints::FK_UNIQUE)
+                            {
+                                //cardinality needs to be computed, from ref_tab.ref_col
+                                cardinality = schema_map.find(
+                                    column_obj.find("ref_tab").value().get<string>())->second->get_row_count();
+                                
+                                //str_length needs to be obtained from ref_tab.ref_col
+                                auto ref_col_obj_ref = dynamic_cast<pk_string_column*>((schema_map.find(
+                                    column_obj.find("ref_tab").value().get<string>()
+                                    )->second->get_column_map()).find(column_obj.find("ref_col").value().get<string>())->second);
+                                
+                                string_length = ref_col_obj_ref->get_str_length();
+                                //var_length needs to be obtained from ref_tab.ref_col
+                                var_length = ref_col_obj_ref->get_is_var_length();
+
+                                if(row_count >= cardinality)
+                                {
+                                    row_count = cardinality;
+                                    table_metadata_obj->set_row_count(row_count);
+                                }
+                                column_metadata_obj = new fk_unique_string_column(*prng, *table_metadata_obj,
+                                        column_name, string_length, var_length);
                             }
                         }
                         else

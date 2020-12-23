@@ -327,35 +327,7 @@ namespace redgene
         prng_base<UIntTypes>* p1;
     public:
         using result_type = UIntTypes;
-        /* prng_engine(random_engines engine)
-        {
-            switch(engine)
-            {
-                case DEFAULT:
-                    p1 = new default_prng<UIntTypes>();
-                    break;
-                case MINSTD_RAND0:
-                    p1 = new minstd0_prng<UIntTypes>();
-                    break;
-                case MINSTD_RAND1:
-                    p1 = new minstd1_prng<UIntTypes>();
-                    break;
-                case MT19937:
-                    p1 = new mt19937_prng<UIntTypes>();
-                    break;
-                case MT19937_64:
-                    p1 = new mt19937_64_prng<UIntTypes>();
-                    break;
-                case RANLUX24:
-                    p1 = new ranlux24_prng<UIntTypes>();
-                    break;
-                case RANLUX48:
-                    p1 = new ranlux48_prng<UIntTypes>();
-                    break;
-                default:
-                    p1 = new default_prng<UIntTypes>();
-            }
-        } */
+       
         prng_engine(random_engines engine = DEFAULT, UIntTypes seed = 1729)
         {
             switch(engine)

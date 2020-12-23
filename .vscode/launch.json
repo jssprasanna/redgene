@@ -9,7 +9,7 @@
             "type": "cppdbg",
             "request": "launch",
             "program": "/home/kp1808/vscode_share/rand_engine/redgene",
-            "args": [],
+            "args": ["test2.json"],
             "stopAtEntry": false,
             "cwd": "/home/kp1808/vscode_share/rand_engine",
             "environment": [],

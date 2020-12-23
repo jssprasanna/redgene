@@ -52,6 +52,14 @@
                      "length": 25,
                      "skewness": "HIGH",
                      "var_length": true
+                 },
+                 {   
+                     "column_name": "col8",
+                     "cardinality": 0.9,
+                     "type": "STRING",
+                     "length": 1024,
+                     "skewness": "HIGH",
+                     "var_length": true
                  }
              ]
          },
@@ -63,7 +71,8 @@
                  {
                      "column_name": "pkcol",
                      "constraint": "PK",
-                     "type": "INT"
+                     "type": "STRING",
+							"var_length": true
                  },
                  {
                      "column_name": "fkcol",
@@ -88,12 +97,12 @@
          },
          {
              "table_name" : "tab3",
-             "row_count" : 1000000,
+             "row_count" : 10000,
              "columns":
              [
                  {
                      "column_name": "fkcol",
-                     "constraint": "FK",
+                     "constraint": "FK_UNIQUE",
                      "ref_tab": "tab2",
                      "ref_col": "pkcol"
                  },
