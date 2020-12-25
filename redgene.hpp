@@ -738,11 +738,10 @@ namespace redgene
 
         inline uint_fast64_t yield()
         {
-            double tmp = (double)((*pdfuncbase)() % repeat_window);
-            if(group_size == 1)
-                return tmp + 1;
-            else
-                return ceil(tmp / group_size);
+            uint_fast64_t tmp = (*pdfuncbase)() % repeat_window;
+            if(tmp == 0)
+                tmp = repeat_window;
+            return ceil((double)tmp / group_size);
         }
     };
 
