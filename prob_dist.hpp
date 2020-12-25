@@ -282,29 +282,41 @@ namespace redgene
     {
     private:
         prng_engine<prngtype>& prng;
-        disttype req_amt;
-        disttype minval;
-        disttype maxval;
-        disttype floor;
-        disttype n;
-        disttype last_k;
-        disttype num_left;
-
-        uniform_int_dist_engine<prngtype, disttype>* rnd = nullptr;
+        vector<disttype>* set_dist_vector = nullptr;
+            
+        uint_fast64_t maxval;
+        uint_fast64_t current_fetch_index = 0;
+        uint_fast64_t max_index;
     public:
-        set_distribution(prng_engine<prngtype>& prng, const disttype amount,
-            const disttype min=numeric_limits<disttype>::min(), 
-            const disttype max=numeric_limits<disttype>::max()) : 
-            prng(prng), req_amt(amount), minval(min), maxval(max), 
-            floor(min), n(max), last_k(min), num_left(amount)
+        set_distribution(prng_engine<prngtype>& prng, const disttype amount, 
+            const disttype max) : prng(prng), maxval(max), 
+            max_index(amount - 1)
         {
-            rnd = new uniform_int_dist_engine<prngtype, disttype>(prng);
+            assert(amount <= maxval);
+            set_dist_vector = new vector<disttype>(amount);
+            set<disttype> is_used;
+            uint_fast64_t track_n, track_mv = 0;
+	        uint_fast64_t idx = 0;
+
+            for(uint_fast64_t i = 0; i < amount; ++i)
+                (*set_dist_vector)[i] = prng();
+
+            for(track_n = maxval - amount; track_n < maxval && track_mv < amount; track_n++)
+            {
+                uint_fast64_t res = (*set_dist_vector)[idx++] % (track_n + 1);
+                if(is_used.find(res) != is_used.end())
+                    res = track_n;
+                assert(is_used.find(res) == is_used.end());
+                (*set_dist_vector)[track_mv++] = res + 1;
+                is_used.insert(res);
+            }
+            assert(track_mv == amount);
         }
 
         ~set_distribution()
         {
-            if(rnd)
-                delete rnd;
+            if(set_dist_vector)
+                delete set_dist_vector;
         }
 
         void reset()
@@ -314,7 +326,7 @@ namespace redgene
 
         disttype min() const
         {
-            return this->minval;
+            return 1;
         }
 
         disttype max() const
@@ -324,25 +336,16 @@ namespace redgene
 
         inline disttype operator()()
         {
-            disttype r = 0;
+            disttype r;
             try
             {
-                if(req_amt > maxval)
-                    throw "Requested random numbers is greater than max value";
-                if(num_left > 0)
+                if(current_fetch_index <= max_index)
                 {
-                    disttype range_size = (n - last_k) / num_left;
-                    //uniform_int_dist_engine<prngtype, disttype> rnd(prng, floor, range_size);
-                    rnd->set_dist_params(floor, range_size);
-                    r = (*rnd)() + last_k + 1;
-                    last_k = r;
-                    --num_left;
-                    return r;
+                    r = (*set_dist_vector)[current_fetch_index];
+                    ++current_fetch_index;
                 }
                 else
-                {
-                    throw "Exceeded amount of random numbers to generate";
-                }
+                    throw "Exceeding the max limit of SET DISTRIBUTION";
             }
             catch(const char* e)
             {

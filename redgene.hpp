@@ -722,7 +722,7 @@ namespace redgene
             if(amount < (3 * max))
             {
                 prng.seed(prng_seed);
-                pdfuncbase = new set_distribution<uint_fast64_t>(prng, amount, 1, max);
+                pdfuncbase = new set_distribution<uint_fast64_t>(prng, amount, max);
             }
             else
             {
@@ -875,7 +875,7 @@ namespace redgene
                     comp_pk_attrib->repeat_window = schema_map.find(column.find("ref_tab").value().get<string>())
                         ->second->get_row_count() * tmp_group_size;
                     comp_pk_attrib->group_size = tmp_group_size;
-                    tmp_group_size *= comp_pk_attrib->repeat_window;
+                    tmp_group_size = comp_pk_attrib->repeat_window;
                     comp_pk_attrib_map->insert(pair<string, comp_pk_attributes*>(column.find("column_name").value().get<string>(),
                         comp_pk_attrib));
                 }
