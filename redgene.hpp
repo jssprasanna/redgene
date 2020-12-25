@@ -836,7 +836,7 @@ namespace redgene
             for(auto column : column_arr)
             {
                 if(get_redgene_constraint(column.find("constraint").value().get<string>())
-                    == COMP_PK)
+                    == constraints::COMP_PK)
                 {
                     comp_pk_attrib_map->insert(pair<string, comp_pk_attributes*>
                         (column.find("column_name").value().get<string>(), new comp_pk_attributes));
@@ -863,9 +863,26 @@ namespace redgene
             return pow(alpha, comp_pk_attrib_map->size());
         }
 
-        void create_ref_comp_pk_map(json& column_arr)
+        uint_fast64_t create_ref_comp_pk_map(json& column_arr)
         {
-
+            uint_fast64_t tmp_group_size = 1;
+            comp_pk_attrib_map = new map<string, comp_pk_attributes*>();
+            for(auto column : column_arr)
+            {
+                if(get_redgene_constraint(column.find("constraint").value().get<string>())
+                    == constraints::COMP_PK)
+                {
+                    comp_pk_attributes* comp_pk_attrib = new comp_pk_attributes;
+                    comp_pk_attrib->repeat_window = schema_map.find(column.find("ref_tab").value().get<string>())
+                        ->second->get_row_count() * tmp_group_size;
+                    comp_pk_attrib->group_size = tmp_group_size;
+                    tmp_group_size *= comp_pk_attrib->repeat_window;
+                    comp_pk_attrib_map->insert(pair<string, comp_pk_attributes*>(column.find("column_name").value().get<string>(),
+                        comp_pk_attrib));
+                }
+            }
+            is_comp_pk_map_available = true;
+            return tmp_group_size;
         }
 
         void set_table_metadata()
@@ -944,7 +961,7 @@ namespace redgene
                                     if(column_obj.find("type") != column_obj.end())
                                         max_combinations = create_nonref_comp_pk_map(column_arr.value(), row_count);
                                     else
-                                        create_ref_comp_pk_map(column_arr.value());
+                                        max_combinations = create_ref_comp_pk_map(column_arr.value());
                                 }
                                 auto comp_pk_metadata_obj = comp_pk_attrib_map->find(column_name)->second;
                                 column_metadata_obj = new comp_pk_int_column(*prng, *table_metadata_obj, column_name,
