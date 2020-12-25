@@ -120,6 +120,8 @@ namespace redgene
             if(column_arr_obj == table_obj.end())
                 return false;
             
+            //bool to check all COMP_PKs are of same profile.
+            bool is_comp_pk_a_ref, is_first_occurance = true;
             for(auto column_obj : column_arr_obj.value())
             {
                 auto column_name = column_obj.find("column_name");
@@ -132,9 +134,15 @@ namespace redgene
 
                 auto col_data_type = column_obj.find("type");
                 bool ref_constraint = is_ref_constraint(column_obj);
+
+                //it's invalid to provide both type and reference constraint
+                if(col_data_type != column_obj.end() && ref_constraint)
+                    return false;
+
                 if(col_data_type == column_obj.end() && !ref_constraint)
                     return false;
-                else if(!ref_constraint)
+                
+                if(!ref_constraint)
                 {
                     auto col_data_type_str = col_data_type.value().get<string>();
                     transform(col_data_type_str.begin(), col_data_type_str.end(),
@@ -153,7 +161,7 @@ namespace redgene
                 }
 
                 auto constraint = column_obj.find("constraint");
-                //Logic to check if inavlid constraint value is provided.
+                //Logic to check if invalid constraint value is provided.
                 if(constraint != column_obj.end())
                 {
                     auto constraint_val = constraint.value().get<string>();
@@ -163,7 +171,22 @@ namespace redgene
                     if(valid_constraints.find(constraint_val) == valid_constraints.end())
                         return false;
                     
-                    if(constraint_val == "PK")
+                    //Logic to check dual nature of COMP_PK column (is either independent or has reference column)
+                    if(constraint_val == "COMP_PK")
+                    {
+                        if(is_first_occurance)
+                        {
+                            is_comp_pk_a_ref = ref_constraint;
+                            is_first_occurance = false;
+                        }
+                        else
+                        {
+                            if(is_comp_pk_a_ref != ref_constraint)
+                                return false;
+                        }
+                    }
+
+                    if(constraint_val == "PK" || (constraint_val == "COMP_PK" && !ref_constraint))
                     {
                         //PK constraint column_type should be INT or STRING only.
                         auto col_data_type_str = col_data_type.value().get<string>();
@@ -174,7 +197,8 @@ namespace redgene
                     }
                     //check whether references are provided for ref constraints
                     //FOREIGN KEY (FK and FK_UNIQUE)
-                    else if(constraint_val == "FK" || constraint_val == "FK_UNIQUE")
+                    else if(constraint_val == "FK" || constraint_val == "FK_UNIQUE" || 
+                        (constraint_val == "COMP_PK" && ref_constraint))
                     {
                         auto ref_table = column_obj.find("ref_tab");
                         auto ref_column = column_obj.find("ref_col");
@@ -270,9 +294,13 @@ namespace redgene
             auto constraint = json_node.find("constraint").value().get<string>();
             transform(constraint.begin(), constraint.end(), constraint.begin(), ::toupper);
 
-            if(constraint == "FK" || constraint == "FK_UNIQUE" || constraint == "COMP_PK"
-                || constraint == "COMP_FK")
+            if(constraint == "FK" || constraint == "FK_UNIQUE" || constraint == "COMP_FK")
                 ref_constraint = true;
+            else if(constraint == "COMP_PK")
+            {
+                ref_constraint = (json_node.find("ref_tab") != json_node.end()) && 
+                    (json_node.find("ref_col") != json_node.end());
+            }
         }
         return ref_constraint;
     }
@@ -668,12 +696,72 @@ namespace redgene
         }
     };
 
+    //int composite primary key class
+    class comp_pk_int_column : public column
+    {
+    private:
+        prng_engine<uint_fast64_t>& prng;
+        const table& _table;
+        //const uint_fast64_t prng_seed;
+        const uint_fast64_t amount;
+        const uint_fast64_t max;
+        const uint_fast64_t repeat_window;
+        const uint_fast64_t group_size;
+
+        prob_dist_base<uint_fast64_t>* pdfuncbase = nullptr;
+    public:
+        comp_pk_int_column(prng_engine<uint_fast64_t>& prng, const table& _table, const string& col_name,
+            const uint_fast64_t prng_seed, const uint_fast64_t amount, const uint_fast64_t max, 
+            const uint_fast64_t repeat_window, const uint_fast64_t group_size) :
+            prng(prng), _table(_table), column(col_name, redgene_types::INT, constraints::COMP_PK), 
+            amount(amount), max(max), repeat_window(repeat_window), group_size(group_size)
+        {
+            //reset prng to seed value provided.
+            //so that we can have all columns invovled in the comp_pk generation 
+            //be having same random vector to generate the combination of comp_pk values 
+            if(amount < (3 * max))
+            {
+                prng.seed(prng_seed);
+                pdfuncbase = new set_distribution<uint_fast64_t>(prng, amount, 1, max);
+            }
+            else
+            {
+                pdfuncbase = new simple_incrementer<uint_fast64_t>(1);
+            }
+        }
+
+        ~comp_pk_int_column()
+        {
+            if(pdfuncbase)
+                delete pdfuncbase;
+        }
+
+        inline uint_fast64_t yield()
+        {
+            double tmp = (double)((*pdfuncbase)() % repeat_window);
+            if(group_size == 1)
+                return tmp + 1;
+            else
+                return ceil(tmp / group_size);
+        }
+    };
+
     class redgene_engine
     {
     private:    
         redgene_validator& rgene_validator;
         prng_engine<uint_fast64_t>* prng = nullptr;
         map<string, table*> schema_map;
+        uint_fast64_t g_prng_seed;
+
+        //members to track comp_pk columns
+        typedef struct comp_pk_attributes
+        {
+            uint_fast64_t repeat_window;
+            uint_fast64_t group_size;
+        } comp_pk_attributes;
+        bool is_comp_pk_map_available = false;
+        map<string, comp_pk_attributes*>* comp_pk_attrib_map = nullptr;
     public:
         redgene_engine() = delete;
         redgene_engine(redgene_validator& rgene_validator) :
@@ -738,7 +826,46 @@ namespace redgene
             else if(prng_type == "RANLUX48")
                 prng_engine_type = random_engines::RANLUX48;
 
+            g_prng_seed = prng_seed;
             prng = new prng_engine<uint_fast64_t>(prng_engine_type, prng_seed);
+        }
+
+        uint_fast64_t create_nonref_comp_pk_map(json& column_arr, uint_fast64_t row_count)
+        {
+            comp_pk_attrib_map =  new map<string, comp_pk_attributes*>();
+            for(auto column : column_arr)
+            {
+                if(get_redgene_constraint(column.find("constraint").value().get<string>())
+                    == COMP_PK)
+                {
+                    comp_pk_attrib_map->insert(pair<string, comp_pk_attributes*>
+                        (column.find("column_name").value().get<string>(), new comp_pk_attributes));
+                }
+            }
+
+            //calculate alpha value = pow(4*row_count, 1.0/comp_pk_attrib_map.size())
+            uint_fast64_t alpha = ceil(pow(4*row_count, 1.0/comp_pk_attrib_map->size()));
+
+            uint_fast16_t index = 0;
+            for(auto column : column_arr)
+            {
+                if(get_redgene_constraint(column.find("constraint").value().get<string>())
+                    == COMP_PK)
+                {
+                    auto comp_pk_attrib_item = comp_pk_attrib_map->find(
+                        column.find("column_name").value().get<string>())->second;
+                    comp_pk_attrib_item->repeat_window = pow(alpha, index + 1);
+                    comp_pk_attrib_item->group_size = pow(alpha, index);
+                    ++index;
+                }
+            }
+            is_comp_pk_map_available = true;
+            return pow(alpha, comp_pk_attrib_map->size());
+        }
+
+        void create_ref_comp_pk_map(json& column_arr)
+        {
+
         }
 
         void set_table_metadata()
@@ -808,6 +935,21 @@ namespace redgene
                                     table_metadata_obj->set_row_count(row_count);
                                 }
                                 column_metadata_obj = new fk_unique_int_column(*prng, *table_metadata_obj, column_name);
+                            }
+                            else if(constraint == constraints::COMP_PK)
+                            {
+                                uint_fast64_t max_combinations;
+                                if(!is_comp_pk_map_available)
+                                {
+                                    if(column_obj.find("type") != column_obj.end())
+                                        max_combinations = create_nonref_comp_pk_map(column_arr.value(), row_count);
+                                    else
+                                        create_ref_comp_pk_map(column_arr.value());
+                                }
+                                auto comp_pk_metadata_obj = comp_pk_attrib_map->find(column_name)->second;
+                                column_metadata_obj = new comp_pk_int_column(*prng, *table_metadata_obj, column_name,
+                                    g_prng_seed, row_count, max_combinations, comp_pk_metadata_obj->repeat_window,
+                                    comp_pk_metadata_obj->group_size);
                             }
                         }
                         else
@@ -911,6 +1053,16 @@ namespace redgene
                     table_metadata_obj->insert_column_metadata_obj(column_name, column_metadata_obj);
                 }
                 schema_map.insert(pair<string, table*>(table_name, table_metadata_obj));
+                if(comp_pk_attrib_map)
+                {
+                    for(auto col_attrib_item : *comp_pk_attrib_map)
+                    {
+                        delete col_attrib_item.second;
+                    }
+                    delete comp_pk_attrib_map;
+                    comp_pk_attrib_map = nullptr;
+                    is_comp_pk_map_available = false;
+                }
             }
         }
 
@@ -930,7 +1082,12 @@ namespace redgene
                     for(auto itr = column_order.begin(); itr != column_order.end(); ++itr)
                     {
                         if(column_map[*itr]->get_type() == redgene_types::INT)
-                            flatfile << dynamic_cast<normal_int_column*>(column_map[*itr])->yield();
+                        {
+                            if(column_map[*itr]->get_constraint_type() == constraints::COMP_PK)
+                                flatfile << dynamic_cast<comp_pk_int_column*>(column_map[*itr])->yield();
+                            else
+                                flatfile << dynamic_cast<normal_int_column*>(column_map[*itr])->yield();
+                        }
                         else if(column_map[*itr]->get_type() == redgene_types::REAL)
                             flatfile << dynamic_cast<normal_real_column*>(column_map[*itr])->yield();
                         else if(column_map[*itr]->get_type() == redgene_types::STRING)

@@ -72,7 +72,7 @@
                      "column_name": "pkcol",
                      "constraint": "PK",
                      "type": "STRING",
-							"var_length": true
+					 "var_length": true
                  },
                  {
                      "column_name": "fkcol",
@@ -113,7 +113,28 @@
                      "real_max": 150
                  }
              ]
+         },
+         {
+             "table_name": "tab4",
+             "row_count": 10000,
+             "columns":
+             [
+                 {
+                     "column_name": "pkcol1",
+                     "constraint": "COMP_PK",
+                     "type": "INT"
+                 },
+                 {
+                     "column_name": "pkcol2",
+                     "constraint": "COMP_PK",
+                     "type": "INT"
+                 },
+                 {
+                     "column_name": "pkcol3",
+                     "constraint": "COMP_PK",
+                     "type": "INT"
+                 }
+             ]
          }
      ]
  }
- 

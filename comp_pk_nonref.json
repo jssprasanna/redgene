@@ -1,0 +1,29 @@
+{
+    "prng":"MT19937",
+    "seed":1808,
+    "tables":
+    [
+        {
+            "table_name": "tab4",
+            "row_count": 100000,
+            "columns":
+            [
+                {
+                    "column_name": "pkcol1",
+                    "constraint": "COMP_PK",
+                    "type": "INT"
+                },
+                {
+                    "column_name": "pkcol2",
+                    "constraint": "COMP_PK",
+                    "type": "INT"
+                },
+                {
+                    "column_name": "pkcol3",
+                    "constraint": "COMP_PK",
+                    "type": "INT"
+                }
+            ]
+        }
+    ]
+ }

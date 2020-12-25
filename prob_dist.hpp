@@ -90,6 +90,11 @@ namespace redgene
         {
             return uni_int_dist->max();
         }
+
+        void set_dist_params(disttype a, disttype b)
+        {
+            uni_int_dist->param(uniform_int_distribution<uint_fast64_t>::param_type(a, b));
+        }
     };
 
     //uniform real number distribution
@@ -284,6 +289,8 @@ namespace redgene
         disttype n;
         disttype last_k;
         disttype num_left;
+
+        uniform_int_dist_engine<prngtype, disttype>* rnd = nullptr;
     public:
         set_distribution(prng_engine<prngtype>& prng, const disttype amount,
             const disttype min=numeric_limits<disttype>::min(), 
@@ -291,7 +298,13 @@ namespace redgene
             prng(prng), req_amt(amount), minval(min), maxval(max), 
             floor(min), n(max), last_k(min), num_left(amount)
         {
-            
+            rnd = new uniform_int_dist_engine<prngtype, disttype>(prng);
+        }
+
+        ~set_distribution()
+        {
+            if(rnd)
+                delete rnd;
         }
 
         void reset()
@@ -319,8 +332,9 @@ namespace redgene
                 if(num_left > 0)
                 {
                     disttype range_size = (n - last_k) / num_left;
-                    uniform_int_dist_engine<prngtype, disttype> rnd(prng, floor, range_size);
-                    r = rnd() + last_k + 1;
+                    //uniform_int_dist_engine<prngtype, disttype> rnd(prng, floor, range_size);
+                    rnd->set_dist_params(floor, range_size);
+                    r = (*rnd)() + last_k + 1;
                     last_k = r;
                     --num_left;
                     return r;
