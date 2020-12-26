@@ -45,12 +45,11 @@
                 {
                     "column_name": "pkcol",
                     "constraint": "PK",
-                    "type": "INT"
+                    "type": "STRING"
                 },
                 {
                     "column_name": "col2",
-                    "type": "STRING",
-                    "cardinality": 0.6
+                    "type": "REAL"
                 }
             ]
         },

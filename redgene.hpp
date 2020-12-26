@@ -387,7 +387,7 @@ namespace redgene
     {
     protected:
         const string col_name;
-        const redgene_types data_type;
+        mutable redgene_types data_type;
         const constraints constraint;
     public:
         column(const string& col_name, const redgene_types data_type,
@@ -409,6 +409,11 @@ namespace redgene
         constraints get_constraint_type() const
         {
             return constraint;
+        }
+
+        void set_data_type(redgene_types data_type)
+        {
+            this->data_type = data_type;
         }
 
         virtual ~column() = default;
@@ -702,7 +707,7 @@ namespace redgene
     private:
         prng_engine<uint_fast64_t>& prng;
         const table& _table;
-        //const uint_fast64_t prng_seed;
+        
         const uint_fast64_t amount;
         const uint_fast64_t max;
         const uint_fast64_t repeat_window;
@@ -742,6 +747,36 @@ namespace redgene
             if(tmp == 0)
                 tmp = repeat_window;
             return ceil((double)tmp / group_size);
+        }
+    };
+
+    class comp_pk_string_column : public comp_pk_int_column
+    {
+    private:
+         uint_fast16_t string_length;
+         bool var_length;
+         rand_str_generator<>* rand_str_gen = nullptr;
+    public:
+        comp_pk_string_column(prng_engine<uint_fast64_t>& prng, const table& table, const string& col_name, 
+            const uint_fast64_t prng_seed, const uint_fast64_t amount, const uint_fast64_t max, 
+            const uint_fast64_t repeat_window, const uint_fast64_t group_size, const uint_fast16_t str_length,
+            const bool var_length) :
+            comp_pk_int_column(prng, table, col_name, prng_seed, amount, max, repeat_window, group_size), 
+            string_length(str_length), var_length(var_length)
+        {
+            comp_pk_int_column::column::set_data_type(redgene_types::STRING);
+            rand_str_gen = new rand_str_generator<>(str_length, var_length, !var_length);
+        }
+
+        ~comp_pk_string_column()
+        {
+            if(rand_str_gen)
+                delete rand_str_gen;
+        }
+
+        inline string yield()
+        {
+            return (*rand_str_gen)(comp_pk_int_column::yield());
         }
     };
 
@@ -1045,6 +1080,32 @@ namespace redgene
                                 column_metadata_obj = new fk_unique_string_column(*prng, *table_metadata_obj,
                                         column_name, string_length, var_length);
                             }
+                            else if(constraint == constraints::COMP_PK)
+                            {
+                                uint_fast64_t max_combinations;
+
+                                if(!is_comp_pk_map_available)
+                                {
+                                    if(column_obj.find("type") != column_obj.end())
+                                        max_combinations = create_nonref_comp_pk_map(column_arr.value(), row_count);
+                                    else
+                                    {
+                                        max_combinations = create_ref_comp_pk_map(column_arr.value());
+                                        //str_length needs to be obtained from ref_tab.ref_col
+                                        auto ref_col_obj_ref = dynamic_cast<pk_string_column*>((schema_map.find(
+                                            column_obj.find("ref_tab").value().get<string>()
+                                            )->second->get_column_map()).find(column_obj.find("ref_col").value().get<string>())->second);
+                                
+                                        string_length = ref_col_obj_ref->get_str_length();
+                                        //var_length needs to be obtained from ref_tab.ref_col
+                                        var_length = ref_col_obj_ref->get_is_var_length();
+                                    }
+                                }
+                                auto comp_pk_metadata_obj = comp_pk_attrib_map->find(column_name)->second;
+                                column_metadata_obj = new comp_pk_string_column(*prng, *table_metadata_obj, column_name,
+                                    g_prng_seed, row_count, max_combinations, comp_pk_metadata_obj->repeat_window,
+                                    comp_pk_metadata_obj->group_size, string_length, var_length);
+                            }
                         }
                         else
                         {
@@ -1107,7 +1168,12 @@ namespace redgene
                         else if(column_map[*itr]->get_type() == redgene_types::REAL)
                             flatfile << dynamic_cast<normal_real_column*>(column_map[*itr])->yield();
                         else if(column_map[*itr]->get_type() == redgene_types::STRING)
-                            flatfile << dynamic_cast<normal_string_column*>(column_map[*itr])->yield();
+                        {
+                            if(column_map[*itr]->get_constraint_type() == constraints::COMP_PK)
+                                flatfile << dynamic_cast<comp_pk_string_column*>(column_map[*itr])->yield();
+                            else
+                                flatfile << dynamic_cast<normal_string_column*>(column_map[*itr])->yield();
+                        }
                         
                         if(column_order.end() - itr != 1)
                             flatfile << '|';
