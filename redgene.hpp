@@ -935,6 +935,7 @@ namespace redgene
 
                 //logic for individual column types
                 auto column_arr = table_obj.find("columns");
+                uint_fast64_t max_combinations;
                 for(auto column_obj : column_arr.value())
                 {
                     auto column_name = column_obj.find("column_name").value().get<string>();
@@ -989,7 +990,7 @@ namespace redgene
                             }
                             else if(constraint == constraints::COMP_PK)
                             {
-                                uint_fast64_t max_combinations;
+                                //uint_fast64_t max_combinations;
                                 if(!is_comp_pk_map_available)
                                 {
                                     if(column_obj.find("type") != column_obj.end())
@@ -1082,7 +1083,7 @@ namespace redgene
                             }
                             else if(constraint == constraints::COMP_PK)
                             {
-                                uint_fast64_t max_combinations;
+                                //Buint_fast64_t max_combinations;
 
                                 if(!is_comp_pk_map_available)
                                 {
