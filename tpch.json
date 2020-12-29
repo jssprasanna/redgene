@@ -10,7 +10,8 @@
 			[
 				{
 					"column_name": "regionkey",
-					"constraint": "PK"
+					"constraint": "PK",
+               "type": "INT"
 				},
 				{
 					"column_name": "name",
@@ -33,7 +34,8 @@
 			[
 				{
 					"column_name": "nationkey",
-					"constraint": "PK"
+					"constraint": "PK",
+               "type": "INT"
 				},
 				{
 					"column_name": "name",
@@ -62,7 +64,8 @@
 			[
 				{
 					"column_name": "suppkey",
-					"constraint": "PK"
+					"constraint": "PK",
+               "type": "INT"
 				},
 				{
 					"column_name": "name",
@@ -109,7 +112,8 @@
 			[
 				{
 					"column_name":"partkey",
-					"constraint":"PK"
+					"constraint":"PK",
+               "type": "INT"
 				},
 				{
 					"column_name":"name",
@@ -168,7 +172,8 @@
 			[
 				{
 					"column_name":"custkey",
-					"constraint":"PK"
+					"constraint":"PK",
+               		"type": "INT"
 				},
 				{
 					"column_name":"name",
@@ -259,7 +264,8 @@
 			[
 				{
 					"column_name": "orderkey",
-					"constraint": "PK"
+					"constraint": "PK",
+               		"type": "INT"
 				},
 				{
 					"column_name":"custkey",
@@ -299,6 +305,7 @@
 				},
 				{
 					"column_name": "shippriority",
+					"type": "INT",
 					"cardinality": 5,
 					"skewness": "LOW"
 				},
@@ -335,7 +342,8 @@
 				},
 				{
 					"column_name": "linenumber",
-					"cardinality": 0.7
+					"cardinality": 0.7,
+					"type": "INT"
 				},
 				{
 					"column_name": "quantity",

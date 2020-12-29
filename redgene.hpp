@@ -12,7 +12,7 @@ namespace redgene
     //reference zipf alpha value: NO = NA, LOW = 0.5, MEDIUM = 0.9, HIGH = 1.1, EXTREME = 1.5
     using skewness = enum skewness { NO, LOW, MEDIUM, HIGH, EXTREME };
     using redgene_types = enum redgene_types { INT, REAL, STRING };
-    using constraints = enum constraints { NONE, PK, FK, FK_UNIQUE, COMP_PK, COMP_FK };
+    using constraints = enum cofnstraints { NONE, PK, FK, FK_UNIQUE, COMP_PK, COMP_FK };
 
     const float get_alpha_value(const skewness skew)
     {
@@ -227,9 +227,10 @@ namespace redgene
                                     {
                                         for(auto indv_column_obj : indv_table_obj.find("columns").value())
                                         {
-                                            if(indv_column_obj.find("constraint").value() == "COMP_PK")
-                                                comp_pk_col_vector.insert(pair<string, bool>
-                                                (indv_column_obj.find("column_name").value().get<string>(), false));
+                                            if(indv_column_obj.find("constraint") != indv_column_obj.end())
+                                                if(indv_column_obj.find("constraint").value() == "COMP_PK")
+                                                    comp_pk_col_vector.insert(pair<string, bool>
+                                                    (indv_column_obj.find("column_name").value().get<string>(), false));
                                         }
                                     }
                                 }
@@ -1013,11 +1014,14 @@ namespace redgene
             comp_pk_attrib_map =  new map<string, comp_pk_attributes*>();
             for(auto column : column_arr)
             {
-                if(get_redgene_constraint(column.find("constraint").value().get<string>())
-                    == constraints::COMP_PK)
+                if(column.find("constraint") != column.end())
                 {
-                    comp_pk_attrib_map->insert(pair<string, comp_pk_attributes*>
-                        (column.find("column_name").value().get<string>(), new comp_pk_attributes));
+                    if(get_redgene_constraint(column.find("constraint").value().get<string>())
+                        == constraints::COMP_PK)
+                    {
+                        comp_pk_attrib_map->insert(pair<string, comp_pk_attributes*>
+                            (column.find("column_name").value().get<string>(), new comp_pk_attributes));
+                    }
                 }
             }
 
@@ -1027,14 +1031,17 @@ namespace redgene
             uint_fast16_t index = 0;
             for(auto column : column_arr)
             {
-                if(get_redgene_constraint(column.find("constraint").value().get<string>())
-                    == COMP_PK)
+                if(column.find("constraint") != column.end())
                 {
-                    auto comp_pk_attrib_item = comp_pk_attrib_map->find(
-                        column.find("column_name").value().get<string>())->second;
-                    comp_pk_attrib_item->repeat_window = pow(alpha, index + 1);
-                    comp_pk_attrib_item->group_size = pow(alpha, index);
-                    ++index;
+                    if(get_redgene_constraint(column.find("constraint").value().get<string>())
+                        == COMP_PK)
+                    {
+                        auto comp_pk_attrib_item = comp_pk_attrib_map->find(
+                            column.find("column_name").value().get<string>())->second;
+                        comp_pk_attrib_item->repeat_window = pow(alpha, index + 1);
+                        comp_pk_attrib_item->group_size = pow(alpha, index);
+                        ++index;
+                    }
                 }
             }
             is_comp_pk_map_available = true;
@@ -1047,16 +1054,19 @@ namespace redgene
             comp_pk_attrib_map = new map<string, comp_pk_attributes*>();
             for(auto column : column_arr)
             {
-                if(get_redgene_constraint(column.find("constraint").value().get<string>())
-                    == constraints::COMP_PK)
+                if(column.find("constraint") != column.end())
                 {
-                    comp_pk_attributes* comp_pk_attrib = new comp_pk_attributes;
-                    comp_pk_attrib->repeat_window = schema_map.find(column.find("ref_tab").value().get<string>())
-                        ->second->get_row_count() * tmp_group_size;
-                    comp_pk_attrib->group_size = tmp_group_size;
-                    tmp_group_size = comp_pk_attrib->repeat_window;
-                    comp_pk_attrib_map->insert(pair<string, comp_pk_attributes*>(column.find("column_name").value().get<string>(),
-                        comp_pk_attrib));
+                    if(get_redgene_constraint(column.find("constraint").value().get<string>())
+                        == constraints::COMP_PK)
+                    {
+                        comp_pk_attributes* comp_pk_attrib = new comp_pk_attributes;
+                        comp_pk_attrib->repeat_window = schema_map.find(column.find("ref_tab").value().get<string>())
+                            ->second->get_row_count() * tmp_group_size;
+                        comp_pk_attrib->group_size = tmp_group_size;
+                        tmp_group_size = comp_pk_attrib->repeat_window;
+                        comp_pk_attrib_map->insert(pair<string, comp_pk_attributes*>(column.find("column_name").value().get<string>(),
+                            comp_pk_attrib));
+                    }
                 }
             }
             is_comp_pk_map_available = true;
@@ -1346,7 +1356,7 @@ namespace redgene
                         if(column_order.end() - itr != 1)
                             flatfile << '|';
                     }
-                    flatfile << endl;
+                    flatfile << '\n';
                 }
 
                 if(flatfile.is_open())
