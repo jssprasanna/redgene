@@ -824,6 +824,16 @@ namespace redgene
                 delete rand_str_gen;
         }
 
+        uint_fast16_t get_string_length() const
+        {
+            return string_length;
+        }
+
+        bool get_is_var_length() const
+        {
+            return var_length;
+        }
+
         inline string yield()
         {
             return (*rand_str_gen)(comp_pk_int_column::yield());
@@ -883,6 +893,37 @@ namespace redgene
         }
     };
 
+    class comp_fk_string_column :public comp_fk_int_column
+    {
+    private:
+        uint_fast16_t string_length;
+        bool var_length;
+        rand_str_generator<>* rand_str_gen = nullptr;
+    public:
+        comp_fk_string_column(prng_engine<uint_fast64_t>& _prng, const table& _table, const string& col_name,
+            const uint_fast64_t prng_seed, const uint_fast64_t amount, const uint_fast64_t max, 
+            const uint_fast64_t repeat_window, const uint_fast64_t group_size, const float cardinality,
+            const skewness skew, const uint_fast16_t str_length, const bool var_length) :
+            comp_fk_int_column(_prng, _table, col_name, prng_seed, amount, max, repeat_window, group_size,
+            cardinality, skew), string_length(str_length), var_length(var_length)
+        {
+            comp_fk_int_column::column::set_data_type(redgene_types::STRING);
+            //since this is FK column we will not bypass string warehouse check.
+            rand_str_gen = new rand_str_generator<>(string_length, var_length, false);
+        }
+
+        ~comp_fk_string_column()
+        {
+            if(rand_str_gen)
+                delete rand_str_gen;
+        }
+
+        inline string yield()
+        {
+            return (*rand_str_gen)(comp_fk_int_column::yield());
+        }
+    };
+
 
     class redgene_engine
     {
@@ -938,7 +979,6 @@ namespace redgene
             {
                 throw runtime_error("json file is not ReDGene valid!");
             }
-            
         }
 
         void set_prng_engine()
@@ -1218,6 +1258,18 @@ namespace redgene
                                     g_prng_seed, row_count, max_combinations, comp_pk_metadata_obj->repeat_window,
                                     comp_pk_metadata_obj->group_size, string_length, var_length);
                             }
+                            else if(constraint == constraints::COMP_FK)
+                            {
+                                auto comp_pk_tab_metadata = schema_map.find(column_obj.find("ref_tab").value().get<string>())->second;
+                                auto comp_pk_col_metadata = dynamic_cast<comp_pk_string_column*>(comp_pk_tab_metadata->get_column_map()
+                                    .find(column_obj.find("ref_col").value().get<string>())->second);
+
+                                column_metadata_obj = new comp_fk_string_column(*prng, *table_metadata_obj, column_name,
+                                    g_prng_seed, comp_pk_tab_metadata->get_row_count(), comp_pk_col_metadata->get_maxvalue(),
+                                    comp_pk_col_metadata->get_repeat_window(), comp_pk_col_metadata->get_group_size(),
+                                    comp_pk_tab_metadata->get_row_count(), skew, comp_pk_col_metadata->get_string_length(),
+                                    comp_pk_col_metadata->get_is_var_length());
+                            }
                         }
                         else
                         {
@@ -1279,15 +1331,17 @@ namespace redgene
                             else
                                 flatfile << dynamic_cast<normal_int_column*>(column_map[*itr])->yield();
                         }
-                        else if(column_map[*itr]->get_type() == redgene_types::REAL)
-                            flatfile << dynamic_cast<normal_real_column*>(column_map[*itr])->yield();
                         else if(column_map[*itr]->get_type() == redgene_types::STRING)
                         {
                             if(column_map[*itr]->get_constraint_type() == constraints::COMP_PK)
                                 flatfile << dynamic_cast<comp_pk_string_column*>(column_map[*itr])->yield();
+                            else if(column_map[*itr]->get_constraint_type() == constraints::COMP_FK)
+                                flatfile << dynamic_cast<comp_fk_string_column*>(column_map[*itr])->yield();
                             else
                                 flatfile << dynamic_cast<normal_string_column*>(column_map[*itr])->yield();
                         }
+                        else if(column_map[*itr]->get_type() == redgene_types::REAL)
+                            flatfile << dynamic_cast<normal_real_column*>(column_map[*itr])->yield();
                         
                         if(column_order.end() - itr != 1)
                             flatfile << '|';
