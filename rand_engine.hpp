@@ -325,10 +325,12 @@ namespace redgene
     {
     private:
         prng_base<UIntTypes>* p1;
+        random_engines engine;
+        UIntTypes _seed;
     public:
         using result_type = UIntTypes;
        
-        prng_engine(random_engines engine = DEFAULT, UIntTypes seed = 1729)
+        prng_engine(random_engines engine = DEFAULT, UIntTypes seed = 1729) : engine(engine), _seed(seed)
         {
             switch(engine)
             {
@@ -357,10 +359,28 @@ namespace redgene
                     p1 = new default_prng<UIntTypes>(seed);
             }
         }
+
+        prng_engine(const prng_engine& cpy_prng_engine) : 
+            prng_engine(cpy_prng_engine.get_rand_engine(), cpy_prng_engine.get_seed())
+        {
+            
+        }
+
+        random_engines get_rand_engine() const
+        {
+            return engine;
+        }
+
+        UIntTypes get_seed() const
+        {
+            return _seed;
+        }
+
         void seed(UIntTypes seed)
         {
             p1->seed(seed);
         }
+
         inline UIntTypes operator()()
         {
             return (*p1)();

@@ -792,7 +792,8 @@ namespace redgene
 
         inline uint_fast64_t yield()
         {
-            uint_fast64_t tmp = (*pdfuncbase)() % repeat_window;
+            uint_fast64_t tmp = (*pdfuncbase)();
+            tmp %= repeat_window;
             if(tmp == 0)
                 tmp = repeat_window;
             return ceil((double)tmp / group_size);
@@ -833,7 +834,7 @@ namespace redgene
     class comp_fk_int_column : public column
     {
     private:
-        prng_engine<uint_fast64_t>& prng;
+        prng_engine<uint_fast64_t> prng;
         const table& _table;
         const uint_fast64_t repeat_window;
         const uint_fast64_t group_size;
@@ -842,21 +843,23 @@ namespace redgene
         vector<uint_fast64_t>* comp_pk_set_dist_vector = nullptr;
         prob_dist_base<uint_fast64_t>* pdfuncbase = nullptr;
     public:
-        comp_fk_int_column(prng_engine<uint_fast64_t>& prng, const table& _table, const string& col_name,
+        comp_fk_int_column(prng_engine<uint_fast64_t>& _prng, const table& _table, const string& col_name,
             const uint_fast64_t prng_seed, const uint_fast64_t amount, const uint_fast64_t max, 
             const uint_fast64_t repeat_window, const uint_fast64_t group_size, const float cardinality,
-            const skewness skew) : prng(prng), _table(_table), column(col_name, redgene_types::INT,
+            const skewness skew) : prng(_prng), _table(_table), column(col_name, redgene_types::INT,
             constraints::COMP_FK), repeat_window(repeat_window), group_size(group_size), 
             cardinality(cardinality), skew(skew), comp_pk_set_dist_vector(new vector<uint_fast64_t>(amount))
         {
             //repopulate all COMP_PK set distribution vector
             prng.seed(prng_seed);
             set_distribution<uint_fast64_t> set_dist_pdf(prng, amount, max);
-            for(uint_fast64_t i = 0; i < amount; i++)
+            for(uint_fast64_t i = 0; i < amount; ++i)
                 (*comp_pk_set_dist_vector)[i] = set_dist_pdf();
 
             if(skew == skewness::NO)
+            {
                 pdfuncbase = new uniform_int_dist_engine<>(prng, 1, cardinality);
+            }
             else
                 pdfuncbase = new zipf_distribution<>(prng, cardinality, get_alpha_value(skew));
         }
@@ -870,8 +873,9 @@ namespace redgene
         }
 
         inline uint_fast64_t yield()
-        {
-            uint_fast64_t set_vector_val = (*comp_pk_set_dist_vector)[(*pdfuncbase)() - 1];
+        {   
+            uint_fast64_t index = (*pdfuncbase)()-1;
+            uint_fast64_t set_vector_val = (*comp_pk_set_dist_vector)[index];
             set_vector_val %= repeat_window;
             if(set_vector_val == 0)
                 set_vector_val = repeat_window;
