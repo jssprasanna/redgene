@@ -11,8 +11,10 @@ namespace redgene
 {
     //reference zipf alpha value: NO = NA, LOW = 0.5, MEDIUM = 0.9, HIGH = 1.1, EXTREME = 1.5
     using skewness = enum skewness { NO, LOW, MEDIUM, HIGH, EXTREME };
-    using redgene_types = enum redgene_types { INT, REAL, STRING };
+    using redgene_types = enum redgene_types { INT, REAL, STRING, DATE, TIMESTAMP };
     using constraints = enum cofnstraints { NONE, PK, FK, FK_UNIQUE, COMP_PK, COMP_FK };
+ 
+    static const string UNIX_TIME_EPOCH = "1970-JAN-01 05:30:00";
 
     const float get_alpha_value(const skewness skew)
     {
@@ -57,7 +59,7 @@ namespace redgene
         bool is_ref_constraint(json& json_node);
     };
 
-    const set<string> redgene_validator::valid_types = {"INT", "REAL", "STRING"};
+    const set<string> redgene_validator::valid_types = {"INT", "REAL", "STRING", "DATE", "TIMESTAMP"};
     const set<string> redgene_validator::valid_constraints = {"PK", "FK", "COMP_PK", "COMP_FK", "FK_UNIQUE"};
     const set<string> redgene_validator::valid_skewness = {"NO", "LOW", "MEDIUM", "HIGH", "EXTREME"};
 
@@ -239,7 +241,6 @@ namespace redgene
                         }
                     }
                 }
-
                 
                 auto skewness = column_obj.find("skewness");
                 //Logic to check if invalid skewness value is provided
@@ -285,6 +286,11 @@ namespace redgene
                             real_max = real_max_obj.value().get<float>();
                         
                         if(real_min >= real_max)
+                            return false;
+                    }
+                    else if(type == "DATE" || type == "TIMESTAMP")
+                    {
+                        if(constraint != column_obj.end() || cardinality != column_obj.end())
                             return false;
                     }
                     else
@@ -505,7 +511,7 @@ namespace redgene
             delete pdfuncbase;
         }
 
-        virtual inline uint_fast64_t yield()
+        virtual uint_fast64_t yield()
         {
             return (*pdfuncbase)();
         }
@@ -540,6 +546,203 @@ namespace redgene
 
     };
 
+    class normal_date_column : public column
+    {
+    private:
+        prng_engine<uint_fast64_t>& prng;
+        const table& _table;
+        const string user_date;
+        uint_fast8_t range_in_years;
+        prob_dist_base<uint_fast64_t>* pdfuncbase = nullptr;
+
+        chrono::system_clock::time_point ref_timepoint;
+        chrono::system_clock::time_point adv_timepoint;
+        const uint64_t sec_a_year = 31536000;
+        chrono::seconds interval_in_second;
+
+        //objects to map user-defined date time reference
+        time_t rawtime, time_tobj;
+        struct tm *tm_map, *ltm;
+        string* date_string = nullptr;
+        string* mon_str = nullptr;
+
+        const string& get_month(int mon_no)
+        {
+            switch(mon_no)
+            {
+                case 0: *mon_str = "JAN"; break;
+                case 1: *mon_str = "FEB"; break;
+                case 2: *mon_str = "MAR"; break;
+                case 3: *mon_str = "APR"; break;
+                case 4: *mon_str = "MAY"; break;
+                case 5: *mon_str = "JUN"; break;
+                case 6: *mon_str = "JUL"; break;
+                case 7: *mon_str = "AUG"; break;
+                case 8: *mon_str = "SEP"; break;
+                case 9: *mon_str = "OCT"; break;
+                case 10: *mon_str = "NOV"; break;
+                case 11: *mon_str = "DEC"; break;
+            }
+            return *mon_str;
+        }
+
+    public:
+        normal_date_column(prng_engine<uint_fast64_t>& p_prng, 
+            const table& p_table, const string& p_col_name, 
+            const string p_user_date = redgene::UNIX_TIME_EPOCH, 
+            const uint_fast8_t p_range_in_years = 10) :
+            column(p_col_name, redgene_types::DATE, constraints::NONE),
+            prng(p_prng), _table(p_table), user_date(p_user_date), 
+            range_in_years(p_range_in_years)
+        {
+            if(user_date != redgene::UNIX_TIME_EPOCH)
+            {
+                time(&rawtime);
+                tm_map = localtime(&rawtime);
+                istringstream user_date_str(user_date);
+                user_date_str >> get_time(tm_map, "%Y-%b-%d");
+                rawtime =  mktime(tm_map);
+
+                ref_timepoint = chrono::system_clock::from_time_t(rawtime);
+            }
+            adv_timepoint = ref_timepoint + 
+                chrono::seconds(sec_a_year*range_in_years);
+
+            interval_in_second = chrono::duration_cast<chrono::seconds>
+                (adv_timepoint - ref_timepoint);
+            
+            pdfuncbase = new uniform_int_dist_engine<>(prng, 
+                0, interval_in_second.count());
+            date_string = new string(11, ' ');
+            mon_str = new string(3, ' ');
+        }
+
+        const string& yield()
+        {
+            time_tobj = std::chrono::system_clock::to_time_t(
+                ref_timepoint + chrono::seconds((*pdfuncbase)()));
+            ltm = localtime(&time_tobj);            
+            
+            stringstream ss;
+            ss << setfill('0') << setw(2) << ltm->tm_mday 
+                << "-" << get_month(ltm->tm_mon)
+                << "-" << 1900+ltm->tm_year;
+
+            *date_string = ss.str();
+            return *date_string;
+        }
+
+        ~normal_date_column()
+        {
+            if(pdfuncbase)
+                delete pdfuncbase;
+            if(date_string)
+                delete date_string;
+            if(mon_str)
+                delete mon_str;
+        }
+    };
+
+    class normal_timestamp_column : public column
+    {
+    private:
+        prng_engine<uint_fast64_t>& prng;
+        const table& _table;
+        const string user_date;
+        uint_fast8_t range_in_years;
+        prob_dist_base<uint_fast64_t>* pdfuncbase = nullptr;
+
+        chrono::system_clock::time_point ref_timepoint;
+        chrono::system_clock::time_point adv_timepoint;
+        const uint64_t sec_a_year = 31536000;
+        chrono::seconds interval_in_second;
+
+        //objects to map user-defined date time reference
+        time_t rawtime, time_tobj;
+        struct tm *tm_map, *ltm;
+        string* date_string = nullptr;
+        string* mon_str = nullptr;
+
+        const string& get_month(int mon_no)
+        {
+            switch(mon_no)
+            {
+                case 0: *mon_str = "JAN"; break;
+                case 1: *mon_str = "FEB"; break;
+                case 2: *mon_str = "MAR"; break;
+                case 3: *mon_str = "APR"; break;
+                case 4: *mon_str = "MAY"; break;
+                case 5: *mon_str = "JUN"; break;
+                case 6: *mon_str = "JUL"; break;
+                case 7: *mon_str = "AUG"; break;
+                case 8: *mon_str = "SEP"; break;
+                case 9: *mon_str = "OCT"; break;
+                case 10: *mon_str = "NOV"; break;
+                case 11: *mon_str = "DEC"; break;
+            }
+            return *mon_str;
+        }
+
+    public:
+        normal_timestamp_column(prng_engine<uint_fast64_t>& p_prng, 
+            const table& p_table, const string& p_col_name, 
+            const string p_user_date = redgene::UNIX_TIME_EPOCH, 
+            const uint_fast8_t p_range_in_years = 10) :
+            column(p_col_name, redgene_types::TIMESTAMP, constraints::NONE),
+            prng(p_prng), _table(p_table), user_date(p_user_date), 
+            range_in_years(p_range_in_years)
+        {
+            if(user_date != redgene::UNIX_TIME_EPOCH)
+            {
+                time(&rawtime);
+                tm_map = localtime(&rawtime);
+                istringstream user_date_str(user_date);
+                user_date_str >> get_time(tm_map, "%Y-%b-%d %H:%M:%S");
+                rawtime =  mktime(tm_map);
+
+                ref_timepoint = chrono::system_clock::from_time_t(rawtime);
+            }
+            adv_timepoint = ref_timepoint + 
+                chrono::seconds(sec_a_year*range_in_years);
+
+            interval_in_second = chrono::duration_cast<chrono::seconds>
+                (adv_timepoint - ref_timepoint);
+            
+            pdfuncbase = new uniform_int_dist_engine<>(prng, 
+                0, interval_in_second.count());
+            date_string = new string(25, ' ');
+            mon_str = new string(3, ' ');
+        }
+
+        const string& yield()
+        {
+            time_tobj = std::chrono::system_clock::to_time_t(
+                ref_timepoint + chrono::seconds((*pdfuncbase)()));
+            ltm = localtime(&time_tobj);            
+            
+            stringstream ss;
+            ss << setfill('0') << setw(2) << ltm->tm_mday 
+                << "-" << get_month(ltm->tm_mon)
+                << "-" << 1900+ltm->tm_year << " "
+                << setw(2) << ltm->tm_hour << ":"
+                << setw(2) << ltm->tm_min << ":"
+                << setw(2) << ltm->tm_sec;
+
+            *date_string = ss.str();
+            return *date_string;
+        }
+
+        ~normal_timestamp_column()
+        {
+            if(pdfuncbase)
+                delete pdfuncbase;
+            if(date_string)
+                delete date_string;
+            if(mon_str)
+                delete mon_str;
+        }
+    };
+    
     class normal_string_column : public column
     {
     private:
@@ -602,12 +805,9 @@ namespace redgene
                 delete pdfuncbase;
         }
 
-        virtual inline string yield()
+        virtual const string& yield()
         {
-            string rand_str = "<error_in_string_gen>";
-            if(rand_str_gen)
-                rand_str = (*rand_str_gen)((*pdfuncbase)());
-            return rand_str;
+            return (*rand_str_gen)((*pdfuncbase)());
         }
 
         uint_fast16_t get_str_length() const
@@ -620,7 +820,6 @@ namespace redgene
             return is_var_length;
         }
     };
-
 
     class pk_int_column : public normal_int_column
     {
@@ -652,13 +851,12 @@ namespace redgene
 
         ~pk_string_column() = default;
 
-        virtual inline string yield()
+        virtual const string& yield()
         {
             return normal_string_column::yield();
         }
     };
     
-
     class fk_int_column : public normal_int_column
     {
     private:
@@ -696,7 +894,7 @@ namespace redgene
 
         ~fk_string_column() = default;
 
-        virtual inline string yield()
+        virtual const string& yield()
         {
             return normal_string_column::yield();
         }
@@ -732,7 +930,7 @@ namespace redgene
 
         ~fk_unique_string_column() = default;
 
-        inline string yield()
+        const string& yield()
         {
             return normal_string_column::yield();
         }
@@ -835,7 +1033,7 @@ namespace redgene
             return var_length;
         }
 
-        inline string yield()
+        const string& yield()
         {
             return (*rand_str_gen)(comp_pk_int_column::yield());
         }
@@ -919,7 +1117,7 @@ namespace redgene
                 delete rand_str_gen;
         }
 
-        inline string yield()
+        const string& yield()
         {
             return (*rand_str_gen)(comp_fk_int_column::yield());
         }
@@ -1300,6 +1498,36 @@ namespace redgene
                         column_metadata_obj = new normal_real_column(*prng, *table_metadata_obj,
                             column_name, real_min, real_max);
                     }
+                    else if(column_type == redgene_types::DATE)
+                    {
+                        string ref_user_date = redgene::UNIX_TIME_EPOCH;
+                        uint_fast8_t range_in_years = 10;
+
+                        if(column_obj.find("start_date") != column_obj.end())
+                            ref_user_date = column_obj.find("start_date")
+                                .value().get<string>();
+                        if(column_obj.find("range_in_years") != column_obj.end())
+                            range_in_years = column_obj.find("range_in_years")
+                                .value().get<uint_fast8_t>();
+
+                        column_metadata_obj = new normal_date_column(*prng, *table_metadata_obj,
+                            column_name, ref_user_date, range_in_years);
+                    }
+                    else if(column_type == redgene_types::TIMESTAMP)
+                    {
+                        string ref_user_date = redgene::UNIX_TIME_EPOCH;
+                        uint_fast8_t range_in_years = 10;
+
+                        if(column_obj.find("start_date") != column_obj.end())
+                            ref_user_date = column_obj.find("start_date")
+                                .value().get<string>();
+                        if(column_obj.find("range_in_years") != column_obj.end())
+                            range_in_years = column_obj.find("range_in_years")
+                                .value().get<uint_fast8_t>();
+
+                        column_metadata_obj = new normal_timestamp_column(*prng, *table_metadata_obj,
+                            column_name, ref_user_date, range_in_years);
+                    }
 
                     table_metadata_obj->insert_column_metadata_obj(column_name, column_metadata_obj);
                 }
@@ -1352,6 +1580,10 @@ namespace redgene
                         }
                         else if(column_map[*itr]->get_type() == redgene_types::REAL)
                             flatfile << dynamic_cast<normal_real_column*>(column_map[*itr])->yield();
+                        else if(column_map[*itr]->get_type() ==  redgene_types::DATE)
+                            flatfile << dynamic_cast<normal_date_column*>(column_map[*itr])->yield();
+                        else if(column_map[*itr]->get_type() ==  redgene_types::TIMESTAMP)
+                            flatfile << dynamic_cast<normal_timestamp_column*>(column_map[*itr])->yield();
                         
                         if(column_order.end() - itr != 1)
                             flatfile << '|';
@@ -1393,6 +1625,10 @@ namespace redgene
                 type = redgene_types::REAL;
             else if(type_string == "STRING")
                 type = redgene_types::STRING;
+            else if(type_string == "DATE")
+                type = redgene_types::DATE;
+            else if(type_string == "TIMESTAMP")
+                type = redgene_types::TIMESTAMP;
             
             return type;
         }

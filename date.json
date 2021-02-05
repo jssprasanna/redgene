@@ -1,0 +1,36 @@
+{
+    "prng":"MT19937",
+    "seed":1808,
+    "tables":
+    [
+        {
+            "table_name": "tab1",
+            "row_count": 10000,
+            "columns": 
+            [
+                {
+                    "column_name": "pkcol",
+                    "constraint": "PK",
+                    "type": "INT"
+                },
+                {
+                    "column_name": "col1",
+                    "cardinality": 0.9,
+                    "type": "STRING",
+                    "length": 8
+                },
+                {
+                    "column_name": "col2",
+                    "type": "DATE",
+                    "start_date": "2000-May-01"
+                },
+                {
+                    "column_name": "col3",
+                    "type": "TIMESTAMP",
+                    "start_date": "2015-Feb-24 12:20:30",
+                    "range_in_years": 5
+                }
+            ]
+        }
+    ]
+}

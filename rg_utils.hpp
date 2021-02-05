@@ -19,8 +19,6 @@ namespace redgene
         uniform_int_distribution<uint_fast8_t>* uidist = nullptr;
         string* rand_str = nullptr;
     public:
-        
-        rand_str_generator() = default;
         rand_str_generator(uint_fast16_t length, bool is_var_length = false, 
             bool bypass_warehouse = true) :
             str_length(length), is_variable_length(is_var_length), 
@@ -32,13 +30,15 @@ namespace redgene
                 is_variable_length = false;
             
             str_prng = new mt19937_64;
-            rand_var_len = new uniform_int_distribution<uint_fast16_t>(var_length_base, str_length);
-            uidist = new uniform_int_distribution<uint_fast8_t>(0, sizeof(alphabet)/sizeof(*alphabet)-2);
+            rand_var_len = new uniform_int_distribution<uint_fast16_t>
+                (var_length_base, str_length);
+            uidist = new uniform_int_distribution<uint_fast8_t>
+                (0, sizeof(alphabet)/sizeof(*alphabet)-2);
             rand_str = new string(str_length, ' ');
         }
-        string operator()(UIntType key)
+
+        const string& operator()(UIntType key)
         {
-            rand_str->clear();
             uint_fast16_t cond_str_length = str_length;
             if(bypass_warehouse || 
                 (rand_str_warehouse->find(key) == rand_str_warehouse->end()))
@@ -47,13 +47,15 @@ namespace redgene
                 if(is_variable_length)
                 {
                     cond_str_length = (*rand_var_len)(*str_prng);
+                    rand_str->resize(cond_str_length);
                 }
                 
                 for(uint_fast16_t i = 0; i < cond_str_length; ++i)
-                    *rand_str += std::move(alphabet[(*uidist)(*str_prng)]);
+                    (*rand_str)[i] = alphabet[(*uidist)(*str_prng)];
 
                 if(!bypass_warehouse)
-                    rand_str_warehouse->insert(pair<UIntType, string>(key, *rand_str));
+                    rand_str_warehouse->insert(
+                        pair<UIntType, string>(key, *rand_str));
             }
             else
             {
@@ -61,6 +63,7 @@ namespace redgene
             }
             return *rand_str;
         }
+
         ~rand_str_generator()
         {
             if(rand_str_warehouse)
