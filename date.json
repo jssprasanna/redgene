@@ -5,7 +5,7 @@
     [
         {
             "table_name": "tab1",
-            "row_count": 10000,
+            "row_count": 100,
             "columns": 
             [
                 {
