@@ -1,0 +1,71 @@
+{
+    "prng":"MT19937",
+    "seed":100,
+    "tables":
+    [{
+        "table_name": "tab1",
+        "row_count": 1000,
+        "columns":
+        [
+            {
+                "column_name": "pkcol",
+                "constraint": "PK",
+                "type": "INT"
+            },
+            {
+                "column_name": "col1",
+                "cardinality": 0.9,
+                "type": "INT"
+            },
+            {
+                "column_name": "col2",
+                "cardinality": 0.8,
+                "type": "INT"
+            },
+            {
+                "column_name": "col3",
+                "cardinality": 0.5,
+                "type": "INT",
+                "skewness": "HIGH"
+            },
+            {   
+                "column_name": "col4",
+                "type": "REAL"
+            },
+            {
+                "column_name": "col5",
+                "type": "REAL",
+                "real_min": 11.3,
+                "real_max": 13.5
+            },
+            {
+                "column_name": "col6",
+                "cardinality": 0.2,
+                "type": "STRING",
+                "length": 15,
+                "skewness": "EXTREME"
+            },
+            {
+                "column_name": "col7",
+                "cardinality": 0.3,
+                "type": "STRING",
+                "length": 25,
+                "skewness": "HIGH",
+                "var_length": true
+            },
+            {
+                "column_name": "col8",
+                "type": "DATE",
+                "start_date": "2015-Jan-20",
+                "range_in_years": 20
+            },
+            {
+                "column_name": "col9",
+                "type": "TIMESTAMP",
+                "start_date": "2000-Sep-22 15:34:55",
+                "range_in_years": 10
+            }
+        ]
+    }]
+}
+ 
