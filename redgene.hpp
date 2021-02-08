@@ -473,18 +473,25 @@ namespace redgene
 
         prob_dist_base<uint_fast64_t>* pdfuncbase = nullptr;
 
+        //Members to support cardinality specification between 0 and 1
+        prob_dist_base<uint_fast64_t>* support_pdf_lt1card = nullptr;
+        uint_fast64_t call_index = 0;
+
         void set_pdf_context()
         {
             if(cardinality == 1)
                 pdfuncbase = new simple_incrementer<uint_fast64_t>();
             else if(cardinality < 1)
             {   
+                call_index = _table.get_row_count()*cardinality;
+                support_pdf_lt1card = new simple_incrementer<uint_fast64_t>();
+
                 if(skew == skewness::NO)
                     pdfuncbase = new uniform_int_dist_engine<uint_fast64_t, uint_fast64_t>(prng, 1,
                         (_table.get_row_count()*cardinality));
                 else
                     pdfuncbase = new zipf_distribution<uint_fast64_t, uint_fast64_t>(prng,
-                        _table.get_row_count(), get_alpha_value(skew));
+                        _table.get_row_count()*cardinality, get_alpha_value(skew));
             }
             else if(cardinality > 1)
             {
@@ -509,11 +516,27 @@ namespace redgene
         ~normal_int_column()
         {
             delete pdfuncbase;
+            if(support_pdf_lt1card)
+                delete support_pdf_lt1card;
         }
 
         virtual uint_fast64_t yield()
         {
-            return (*pdfuncbase)();
+            uint_fast64_t ret_val;
+            if(cardinality < 1)
+            {
+                if(call_index > 0)
+                {
+                    ret_val = (*support_pdf_lt1card)();
+                    --call_index;
+                }
+                else
+                    ret_val = (*pdfuncbase)();
+            }
+            else
+                ret_val = (*pdfuncbase)();
+
+            return ret_val;
         }
     };
 
@@ -755,18 +778,25 @@ namespace redgene
         prob_dist_base<uint_fast64_t>* pdfuncbase = nullptr;
         rand_str_generator<>* rand_str_gen = nullptr;
 
+        //Members to support cardinality specification between 0 and 1
+        prob_dist_base<uint_fast64_t>* support_pdf_lt1card = nullptr;
+        uint_fast64_t call_index = 0;
+
         void set_pdf_context()
         {
             if(cardinality == 1)
                 pdfuncbase = new simple_incrementer<>();
             else if(cardinality < 1)
             {
+                call_index = _table.get_row_count()*cardinality;
+                support_pdf_lt1card = new simple_incrementer<uint_fast64_t>();
+
                 if(skew == skewness::NO)
                     pdfuncbase = new uniform_int_dist_engine<>(prng, 1, 
                         (_table.get_row_count()*cardinality));
                 else
                     pdfuncbase = new zipf_distribution<>(prng,
-                        _table.get_row_count(), get_alpha_value(skew));
+                        _table.get_row_count()*cardinality, get_alpha_value(skew));
             }
             else if(cardinality > 1)
             {
@@ -803,11 +833,26 @@ namespace redgene
                 delete rand_str_gen;
             if(pdfuncbase)
                 delete pdfuncbase;
+            if(support_pdf_lt1card)
+                delete support_pdf_lt1card;
         }
 
         virtual const string& yield()
         {
-            return (*rand_str_gen)((*pdfuncbase)());
+            uint_fast64_t key_val;
+            if(cardinality < 1)
+            {
+                if(call_index > 0)
+                {
+                    key_val = (*support_pdf_lt1card)();
+                    --call_index;
+                }
+                else
+                    key_val = (*pdfuncbase)();
+            }
+            else
+                key_val = (*pdfuncbase)();
+            return (*rand_str_gen)(key_val);
         }
 
         uint_fast16_t get_str_length() const

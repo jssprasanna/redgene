@@ -9,7 +9,7 @@
 				"-std=c++11",
 				"-Woverflow",
 				"-g",
-				"main.cpp",
+				"redgene.cpp",
 				"-o",
 				"redgene"
 			],
