@@ -1,0 +1,45 @@
+{
+    "prng": "MT19937",
+    "seed": 369,
+    "tables":
+    [
+        {
+            "table_name": "tab1",
+            "row_count": 5000,
+            "columns":
+            [
+                {
+                    "column_name": "pkcol",
+                    "constraint": "PK",
+                    "type": "INT"
+                },
+                {
+                    "column_name": "col1",
+                    "type": "STRING",
+                    "length": 10,
+                    "cardinality": 0.8
+                }
+            ]
+        },
+        {
+            "table_name": "tab2",
+            "row_count": 1500,
+            "columns":
+            [
+                {
+                    "column_name": "fkcol",
+                    "constraint": "FK_UNIQUE",
+                    "ref_tab": "tab1",
+                    "ref_col": "pkcol"
+                },
+                {
+                    "column_name": "col1",
+                    "cardinality": 0.2,
+                    "type": "STRING",
+                    "skewness": "EXTREME",
+                    "length": 1024
+                }
+            ]
+        }
+    ]
+}

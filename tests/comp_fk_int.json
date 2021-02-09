@@ -1,11 +1,11 @@
 {
     "prng":"MT19937",
-    "seed":1808,
+    "seed":369,
     "tables":
     [
         {
             "table_name": "tab1",
-            "row_count": 100,
+            "row_count": 10,
             "columns":
             [
                 {
@@ -23,7 +23,7 @@
         },
         {
             "table_name": "tab2",
-            "row_count": 1000,
+            "row_count": 100,
             "columns":
             [
                 {
@@ -39,13 +39,13 @@
         },
         {
             "table_name": "tab3",
-            "row_count": 10000,
+            "row_count": 1000,
             "columns":
             [
                 {
                     "column_name": "pkcol",
                     "constraint": "PK",
-                    "type": "STRING"
+                    "type": "INT"
                 },
                 {
                     "column_name": "col2",
@@ -55,7 +55,7 @@
         },
         {
             "table_name": "tab4",
-            "row_count": 100000,
+            "row_count": 10000,
             "columns":
             [
                 {
@@ -80,7 +80,7 @@
         },
         {
             "table_name": "tab5",
-            "row_count": 450000,
+            "row_count": 45000,
             "columns":
             [
                 {

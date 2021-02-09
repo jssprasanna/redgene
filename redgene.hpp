@@ -1497,14 +1497,24 @@ namespace redgene
                                     else
                                         max_combinations = create_ref_comp_pk_map(column_arr.value());
                                 }
-                                //str_length needs to be obtained from ref_tab.ref_col
-                                auto ref_col_obj_ref = dynamic_cast<pk_string_column*>((schema_map.find(
-                                    column_obj.find("ref_tab").value().get<string>()
-                                    )->second->get_column_map()).find(column_obj.find("ref_col").value().get<string>())->second);
-                                
-                                string_length = ref_col_obj_ref->get_str_length();
-                                //var_length needs to be obtained from ref_tab.ref_col
-                                var_length = ref_col_obj_ref->get_is_var_length();
+                                if(column_obj.find("type") == column_obj.end())
+                                {
+                                    //str_length needs to be obtained from ref_tab.ref_col
+                                    auto ref_col_obj_ref = dynamic_cast<pk_string_column*>((schema_map.find(
+                                        column_obj.find("ref_tab").value().get<string>()
+                                        )->second->get_column_map()).find(column_obj.find("ref_col").value().get<string>())->second);
+                                    
+                                    string_length = ref_col_obj_ref->get_str_length();
+                                    //var_length needs to be obtained from ref_tab.ref_col
+                                    var_length = ref_col_obj_ref->get_is_var_length();
+                                }
+                                else
+                                {
+                                    if(column_obj.find("length") != column_obj.end())
+                                        string_length = column_obj.find("length").value().get<uint_fast16_t>();
+                                    if(column_obj.find("var_length") != column_obj.end())
+                                        var_length = column_obj.find("var_length").value().get<bool>();
+                                }
 
                                 auto comp_pk_metadata_obj = comp_pk_attrib_map->find(column_name)->second;
                                 column_metadata_obj = new comp_pk_string_column(*prng, *table_metadata_obj, column_name,

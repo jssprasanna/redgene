@@ -1,11 +1,11 @@
 {
     "prng":"MT19937",
-    "seed":1808,
+    "seed":369,
     "tables":
     [
         {
-            "table_name": "tab4",
-            "row_count": 100000,
+            "table_name": "tab1",
+            "row_count": 10000,
             "columns":
             [
                 {
@@ -16,7 +16,9 @@
                 {
                     "column_name": "pkcol2",
                     "constraint": "COMP_PK",
-                    "type": "INT"
+                    "type": "STRING",
+                    "length": 15,
+                    "var_length": true
                 },
                 {
                     "column_name": "pkcol3",

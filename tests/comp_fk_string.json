@@ -1,6 +1,6 @@
 {
     "prng":"MT19937",
-    "seed":1808,
+    "seed":369,
     "tables":
     [
         {
@@ -45,7 +45,9 @@
                 {
                     "column_name": "pkcol",
                     "constraint": "PK",
-                    "type": "STRING"
+                    "type": "STRING",
+                    "length": 24,
+                    "var_length": true
                 },
                 {
                     "column_name": "col2",
@@ -75,6 +77,31 @@
                     "constraint": "COMP_PK",
                     "ref_tab": "tab3",
                     "ref_col": "pkcol"
+                }
+            ]
+        },
+        {
+            "table_name": "tab5",
+            "row_count": 450000,
+            "columns":
+            [
+                {
+                    "column_name": "fkcol1",
+                    "constraint": "COMP_FK",
+                    "ref_tab": "tab4",
+                    "ref_col": "pkcol1"
+                },
+                {
+                    "column_name": "fkcol2",
+                    "constraint": "COMP_FK",
+                    "ref_tab": "tab4",
+                    "ref_col": "pkcol2"
+                },
+                {
+                    "column_name": "fkcol3",
+                    "constraint": "COMP_FK",
+                    "ref_tab": "tab4",
+                    "ref_col": "pkcol3"
                 }
             ]
         }

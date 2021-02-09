@@ -27,6 +27,15 @@ for i in range(0, len(dgen_json['tables'])):
 			elif(dgen_json['tables'][i]['columns'][j]['type'] == 'TIMESTAMP'):
 				et_column_list += dgen_json['tables'][i]['columns'][j]['column_name']
 				et_column_list += ' CHAR(20) DATE_FORMAT TIMESTAMP MASK "DD-MON-YYYY HH24:MI:SS"'
+			elif(dgen_json['tables'][i]['columns'][j]['type'] == 'STRING'):
+				if(dgen_json['tables'][i]['columns'][j].get('length') is not None):
+					if(dgen_json['tables'][i]['columns'][j]['length'] > 255):
+						et_column_list += dgen_json['tables'][i]['columns'][j]['column_name'];
+						et_column_list += ' char(' + str(dgen_json['tables'][i]['columns'][j]['length']) +')'
+					else:
+						et_column_list += dgen_json['tables'][i]['columns'][j]['column_name']
+				else:
+					et_column_list += dgen_json['tables'][i]['columns'][j]['column_name'];
 			else:
 				et_column_list += dgen_json['tables'][i]['columns'][j]['column_name']
 			if(j != len(dgen_json['tables'][i]['columns'])-1):

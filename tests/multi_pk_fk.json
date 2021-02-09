@@ -1,0 +1,118 @@
+{
+    "prng": "MT19937",
+    "seed": 369,
+    "tables":
+    [
+        {
+            "table_name": "tab1",
+            "row_count": 50,
+            "columns":
+            [
+                {
+                    "column_name": "pkcol",
+                    "constraint": "PK",
+                    "type": "INT"
+                },
+                {
+                    "column_name": "col1",
+                    "type": "STRING",
+                    "length": 10,
+                    "cardinality": 0.8
+                }
+            ]
+        },
+        {
+            "table_name": "tab2",
+            "row_count": 50,
+            "columns":
+            [
+                {
+                    "column_name": "pkcol",
+                    "constraint": "PK",
+                    "type": "STRING"
+                },
+                {
+                    "column_name": "col1",
+                    "type": "REAL",
+                    "real_min": 3.5,
+                    "real_max": 28.3
+                }
+            ]
+        },
+        {
+            "table_name": "tab3",
+            "row_count": 50,
+            "columns":
+            [
+                {
+                    "column_name": "pkcol",
+                    "constraint": "PK",
+                    "type": "INT"
+                },
+                {
+                    "column_name": "col1",
+                    "type": "STRING",
+                    "length": 20,
+                    "var_length": true,
+                    "cardinality": 0.4
+                }
+            ]
+        },
+        {
+            "table_name": "tab4",
+            "row_count": 50,
+            "columns":
+            [
+                {
+                    "column_name": "pkcol",
+                    "constraint": "PK",
+                    "type": "STRING",
+                    "length": 15,
+                    "var_length": true
+                },
+                {
+                    "column_name": "col1",
+                    "type": "STRING",
+                    "length": 8,
+                    "cardinality": 0.3,
+                    "skewness": "EXTREME"
+                }
+            ]
+        },
+        {
+            "table_name": "tab5",
+            "row_count": 15000,
+            "columns":
+            [
+                {
+                    "column_name": "fkcol1",
+                    "constraint": "FK",
+                    "ref_tab": "tab1",
+                    "ref_col": "pkcol",
+                    "skewness": "LOW"
+                },
+                {
+                    "column_name": "fkcol2",
+                    "constraint": "FK",
+                    "ref_tab": "tab2",
+                    "ref_col": "pkcol",
+                    "skewness": "EXTREME"
+                },
+                {
+                    "column_name": "fkcol3",
+                    "constraint": "FK",
+                    "ref_tab": "tab3",
+                    "ref_col": "pkcol",
+                    "skewness": "HIGH"
+                },
+                {
+                    "column_name": "fkcol4",
+                    "constraint": "FK",
+                    "ref_tab": "tab4",
+                    "ref_col": "pkcol",
+                    "skewness": "MEDIUM"
+                }
+            ]
+        }
+    ]
+}
