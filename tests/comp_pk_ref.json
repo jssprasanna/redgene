@@ -47,7 +47,7 @@
                     "constraint": "PK",
                     "type": "STRING",
                     "var_length": true,
-                    "length": 20
+                    "length": 512
                 },
                 {
                     "column_name": "col2",

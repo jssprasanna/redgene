@@ -265,7 +265,7 @@
 				{
 					"column_name": "orderkey",
 					"constraint": "PK",
-               		"type": "INT"
+               "type": "INT"
 				},
 				{
 					"column_name":"custkey",
@@ -287,9 +287,9 @@
 				},
 				{
 					"column_name": "orderdate",
-					"cardinality": 0.6,
-					"type": "STRING",
-					"length": 10
+					"type": "DATE",
+					"start_date": "2005-Oct-02",
+					"range_in_years": 5
 				},
 				{
 					"column_name": "orderpriority",
@@ -383,21 +383,21 @@
 				},
 				{
 					"column_name": "shipdate",
-					"cardinality": 0.6,
-					"type": "STRING",
-					"length": 10
+					"type": "DATE",
+					"range_in_years": 5,
+					"start_date": "2005-Nov-02"
 				},
 				{
 					"column_name": "commitdate",
-					"cardinality": 0.6,
-					"type": "STRING",
-					"length": 10
+               "type": "DATE",
+               "range_in_years": 5,
+               "start_date": "2005-Oct-23"
 				},
 				{
 					"column_name": "receiptdate",
-					"cardinality": 0.6,
-					"type": "STRING",
-					"length": 10
+               "type": "DATE",
+               "range_in_years": 5,
+               "start_date": "2005-Nov-15"
 				},
 				{
 					"column_name": "shipinstruct",

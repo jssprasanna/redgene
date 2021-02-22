@@ -15,6 +15,24 @@ sfh = open(sys.argv[1].split('.')[0]+".sql", "w")
 
 dgen_json = json.load(jfh)
 
+def get_ref_col_type(json_handle, ref_tab, ref_col):
+	for i in range(0, len(json_handle['tables'])):
+		if(json_handle['tables'][i]['table_name'] == ref_tab):
+			for j in range(0, len(dgen_json['tables'][i]['columns'])):
+				if(dgen_json['tables'][i]['columns'][j]['column_name'] == ref_col):
+					if(dgen_json['tables'][i]['columns'][j].get('type') is not None):
+						if(dgen_json['tables'][i]['columns'][j]['type'] == 'DATE'):
+							return 'CHAR(11) DATE_FORMAT DATE MASK "DD-MON-YYYY"'
+						elif(dgen_json['tables'][i]['columns'][j]['type'] == 'TIMESTAMP'):
+							return 'CHAR(20) DATE_FORMAT TIMESTAMP MASK "DD-MON-YYYY HH24:MI:SS"'
+						elif(dgen_json['tables'][i]['columns'][j]['type'] == 'STRING'):
+							if(dgen_json['tables'][i]['columns'][j].get('length') is not None):
+								if(dgen_json['tables'][i]['columns'][j]['length'] > 255):
+									return ' char(' + str(dgen_json['tables'][i]['columns'][j]['length']) +')'			
+					else:
+						get_ref_col_type(json_handle, dgen_json['tables'][i]['columns'][j]['ref_tab'], dgen_json['tables'][i]['columns'][j]['ref_col'])
+
+
 for i in range(0, len(dgen_json['tables'])):
 	et_column_list = ''
 	crt_tab_ddl = 'create table '+dgen_json['tables'][i]['table_name']+'_et('
@@ -30,16 +48,24 @@ for i in range(0, len(dgen_json['tables'])):
 			elif(dgen_json['tables'][i]['columns'][j]['type'] == 'STRING'):
 				if(dgen_json['tables'][i]['columns'][j].get('length') is not None):
 					if(dgen_json['tables'][i]['columns'][j]['length'] > 255):
-						et_column_list += dgen_json['tables'][i]['columns'][j]['column_name'];
+						et_column_list += dgen_json['tables'][i]['columns'][j]['column_name']
 						et_column_list += ' char(' + str(dgen_json['tables'][i]['columns'][j]['length']) +')'
 					else:
 						et_column_list += dgen_json['tables'][i]['columns'][j]['column_name']
 				else:
-					et_column_list += dgen_json['tables'][i]['columns'][j]['column_name'];
+					et_column_list += dgen_json['tables'][i]['columns'][j]['column_name']
 			else:
 				et_column_list += dgen_json['tables'][i]['columns'][j]['column_name']
 			if(j != len(dgen_json['tables'][i]['columns'])-1):
 				et_column_list += ',\n\t\t'
+		elif(dgen_json['tables'][i]['columns'][j].get('ref_tab') is not None):
+			et_column_list += dgen_json['tables'][i]['columns'][j]['column_name']
+			if(get_ref_col_type(dgen_json, dgen_json['tables'][i]['columns'][j]['ref_tab'], dgen_json['tables'][i]['columns'][j]['ref_col']) is not None):
+				et_column_list += ' ' + get_ref_col_type(dgen_json, dgen_json['tables'][i]['columns'][j]['ref_tab'], dgen_json['tables'][i]['columns'][j]['ref_col'])
+	
+			if(j != len(dgen_json['tables'][i]['columns'])-1):
+				et_column_list += ',\n\t\t'
+
 		if('type' in dgen_json['tables'][i]['columns'][j]):
 			if(dgen_json['tables'][i]['columns'][j]['type'] == 'INT' or dgen_json['tables'][i]['columns'][j]['type'] == 'REAL'):
 				crt_tab_ddl = crt_tab_ddl+' number'
